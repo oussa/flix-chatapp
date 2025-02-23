@@ -1,4 +1,4 @@
-import { pgTable, serial, text, timestamp, boolean, integer } from 'drizzle-orm/pg-core';
+import { pgTable, serial, text, timestamp, boolean, integer, varchar } from 'drizzle-orm/pg-core';
 
 export const users = pgTable('users', {
   id: serial('id').primaryKey(),
@@ -39,4 +39,14 @@ export const faqArticles = pgTable('faq_articles', {
   content: text('content').notNull(),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+export const helpTopics = pgTable('help_topics', {
+  id: serial('id').primaryKey(),
+  title: varchar('title', { length: 255 }).notNull(),
+  icon: varchar('icon', { length: 50 }).notNull(), // Store icon name from lucide-react
+  link: varchar('link', { length: 255 }).notNull(),
+  sortOrder: serial('sort_order').notNull(), // To maintain custom ordering
+  createdAt: text('created_at').notNull().default(new Date().toISOString()),
+  updatedAt: text('updated_at').notNull().default(new Date().toISOString()),
 }); 

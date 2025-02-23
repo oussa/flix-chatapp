@@ -1,9 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import UserAvatar from '@/components/UserAvatar';
 import ConfirmationDialog from '@/components/ConfirmationDialog';
+import { logout, getSession } from '@/app/actions/auth';
 
 interface Conversation {
   id: number;
@@ -20,10 +22,22 @@ interface Conversation {
 }
 
 export default function AgentDashboard() {
+  const router = useRouter();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<number | null>(null);
   const [message, setMessage] = useState('');
   const [isConfirmationOpen, setIsConfirmationOpen] = useState(false);
+
+  useEffect(() => {
+    // Check authentication
+    const checkAuth = async () => {
+      const session = await getSession();
+      if (!session) {
+        router.push('/agent/login');
+      }
+    };
+    checkAuth();
+  }, [router]);
 
   // Mock data for demonstration
   useEffect(() => {
@@ -99,11 +113,23 @@ export default function AgentDashboard() {
     }
   };
 
+  const handleLogout = async () => {
+    await logout();
+    router.push('/agent/login');
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white shadow">
-        <div className="container mx-auto px-4 py-6">
+        <div className="container mx-auto px-4 py-6 flex justify-between items-center">
           <h1 className="text-2xl font-bold text-gray-900">Agent Dashboard</h1>
+          <Button
+            onClick={handleLogout}
+            variant="outline"
+            className="border-[#31a200] text-[#31a200] hover:bg-[#31a200] hover:text-white"
+          >
+            Logout
+          </Button>
         </div>
       </header>
 
