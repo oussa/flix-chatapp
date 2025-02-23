@@ -1,5 +1,4 @@
-import { Button } from "@/components/ui/button"
-import { MessageCircle } from "lucide-react"
+import Image from "next/image"
 
 interface ChatButtonProps {
   onClick: () => void
@@ -7,8 +6,13 @@ interface ChatButtonProps {
 
 export default function ChatButton({ onClick }: ChatButtonProps) {
   return (
-    <Button className="fixed bottom-4 right-4 rounded-full p-4" onClick={onClick}>
-      <MessageCircle className="h-6 w-6" />
-    </Button>
+    <button
+      onClick={onClick}
+      className="fixed bottom-4 right-4 w-16 h-16 rounded-full bg-white/80 backdrop-blur-sm shadow-lg hover:shadow-xl transition-shadow duration-200 flex items-center justify-center"
+    >
+      <div className="w-12 h-12 rounded-full overflow-hidden">
+        <Image src="/flixy.png" alt="Chat with Flixy" width={48} height={48} />
+      </div>
+    </button>
   )
 }
