@@ -1,36 +1,89 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Chat Support Application
 
-## Getting Started
+A modern chat support application built with Next.js, TypeScript, and PostgreSQL. Features include a landing page with FAQ, a customer chat widget, and an agent dashboard.
 
-First, run the development server:
+## Features
 
+- 🎯 Landing Page with FAQ articles
+- 💬 Real-time chat widget
+- 👥 Customer information collection
+- 💾 Session persistence
+- 📊 Agent dashboard
+- 🔄 Responsive design
+
+## Prerequisites
+
+- Node.js 18 or later
+- PostgreSQL 12 or later
+- npm or yarn
+
+## Setup
+
+1. Clone the repository:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone <repository-url>
+cd chatapp
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. Install dependencies:
+```bash
+npm install
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+3. Create a `.env` file in the root directory with your database configuration:
+```env
+DATABASE_URL="postgres://username:password@localhost:5432/chatapp"
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+4. Set up the database:
+```bash
+# Create the database
+createdb chatapp
 
-## Learn More
+# Generate migrations
+npm run db:generate
 
-To learn more about Next.js, take a look at the following resources:
+# Push migrations to database
+npm run db:push
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+# Run database setup script
+npm run db:setup
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+5. Start the development server:
+```bash
+npm run dev
+```
 
-## Deploy on Vercel
+The application will be available at `http://localhost:3000`.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Project Structure
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `/app` - Next.js pages and routing
+- `/components` - React components
+- `/drizzle` - Database schema and migrations
+- `/lib` - Utility functions and database configuration
+- `/scripts` - Setup and maintenance scripts
+
+## Available Scripts
+
+- `npm run dev` - Start development server
+- `npm run build` - Build for production
+- `npm run start` - Start production server
+- `npm run lint` - Run ESLint
+- `npm run db:generate` - Generate database migrations
+- `npm run db:push` - Push migrations to database
+- `npm run db:studio` - Open Drizzle Studio
+- `npm run db:setup` - Run database setup script
+
+## Contributing
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
