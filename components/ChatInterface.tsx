@@ -1,10 +1,11 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useLayoutEffect, memo, useCallback, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { X } from "lucide-react"
 import Image from "next/image"
+import { v4 as uuidv4 } from 'uuid'
 
 interface Message {
   id: string
@@ -26,115 +27,99 @@ interface ChatInterfaceProps {
 }
 
 export default function ChatInterface({ onClose }: ChatInterfaceProps) {
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+  const [isInitialized, setIsInitialized] = useState(false)
   const [messages, setMessages] = useState<Message[]>([])
   const [inputMessage, setInputMessage] = useState("")
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null)
-  const [currentQuestion, setCurrentQuestion] = useState(0)
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
   const [isWaitingForAgent, setIsWaitingForAgent] = useState(false)
   const [showPrivacyNotice, setShowPrivacyNotice] = useState(true)
 
-  const questions = [
+  const allQuestions = [
+    "Hello, I'm Flixy your AI agent. How can I help you today?",
+    "To best serve you I still need some information before handing over to one of our human agents.",
     "What's your email address?",
     "What's your first name?",
     "What's your last name?",
-    "If you have a booking ID, please enter it (optional):",
+    "Do you have a booking ID? If so, please enter it. If not, just type 'no'.",
+    "Thank you for providing your information. We're connecting you with a support agent. Please wait..",
+    "You've been added to the queue. An agent will be with you shortly."
   ]
 
-  useEffect(() => {
-    const savedMessages = localStorage.getItem("chatMessages")
-    const savedUserInfo = localStorage.getItem("userInfo")
-    if (savedMessages) {
-      setMessages(JSON.parse(savedMessages))
-    } else {
-      showThinkingThenMessage(
-        "Hello! Before we connect you with an agent, I need to collect some information. " + questions[0],
-      )
-    }
-    if (savedUserInfo) {
-      setUserInfo(JSON.parse(savedUserInfo))
-      setCurrentQuestion(questions.length)
-    }
-  }, [])
-
-  useEffect(() => {
-    localStorage.setItem("chatMessages", JSON.stringify(messages))
-  }, [messages])
-
-  useEffect(() => {
-    if (userInfo) {
-      localStorage.setItem("userInfo", JSON.stringify(userInfo))
-    }
-  }, [userInfo])
-
-  const addMessage = (text: string, isUser: boolean, isThinking: boolean = false) => {
+  const addMessage = useCallback((text: string, isUser: boolean) => {
     const newMessage: Message = {
-      id: Date.now().toString(),
+      id: uuidv4(),
       text,
       isUser,
-      timestamp: Date.now(),
-      isThinking
+      timestamp: Date.now()
     }
-    setMessages((prevMessages) => [...prevMessages, newMessage])
-  }
+    setMessages(prev => [...prev, newMessage])
+  }, [])
 
-  const showThinkingThenMessage = async (text: string) => {
-    addMessage("Thinking...", false, true)
-    // Simulate thinking time
-    await new Promise(resolve => setTimeout(resolve, 3000))
-    // Remove thinking message and add actual message
-    setMessages(prev => {
-      const filtered = prev.filter(msg => !msg.isThinking)
-      return [...filtered, {
-        id: Date.now().toString(),
-        text,
-        isUser: false,
-        timestamp: Date.now()
-      }]
-    })
-  }
+  const handleSendMessage = () => {
+    if (!inputMessage.trim()) return
 
-  const handleSendMessage = async () => {
-    if (inputMessage.trim()) {
-      addMessage(inputMessage, true)
-      setInputMessage("")
-
-      if (currentQuestion < questions.length) {
-        await showThinkingThenMessage(questions[currentQuestion])
-        handleUserInfoInput(inputMessage)
-      } else if (!isWaitingForAgent) {
+    // Add user's message
+    addMessage(inputMessage, true)
+    
+    // Process the user's response based on current question
+    switch (currentQuestionIndex) {
+      case 0: // Initial greeting
+        setCurrentQuestionIndex(1)
+        setTimeout(() => addMessage(allQuestions[1], false), 1000)
+        setTimeout(() => {
+          addMessage(allQuestions[2], false)
+          setCurrentQuestionIndex(2)
+        }, 2000)
+        break
+      case 2: // Email
+        if (inputMessage.includes('@')) {
+          setUserInfo({
+            email: inputMessage,
+            firstName: '',
+            lastName: '',
+          })
+          setCurrentQuestionIndex(3)
+          setTimeout(() => addMessage(allQuestions[3], false), 1000)
+        } else {
+          setTimeout(() => addMessage("Please enter a valid email address.", false), 1000)
+        }
+        break
+      case 3: // First name
+        setUserInfo(prev => prev ? {
+          ...prev,
+          firstName: inputMessage
+        } : null)
+        setCurrentQuestionIndex(4)
+        setTimeout(() => addMessage(allQuestions[4], false), 1000)
+        break
+      case 4: // Last name
+        setUserInfo(prev => prev ? {
+          ...prev,
+          lastName: inputMessage
+        } : null)
+        setCurrentQuestionIndex(5)
+        setTimeout(() => addMessage(allQuestions[5], false), 1000)
+        break
+      case 5: // Booking ID
+        setUserInfo(prev => prev ? {
+          ...prev,
+          bookingId: inputMessage.toLowerCase() === 'no' ? undefined : inputMessage
+        } : null)
+        setCurrentQuestionIndex(6)
         setIsWaitingForAgent(true)
-        await showThinkingThenMessage(
-          "Thank you for providing your information. We're connecting you with a support agent. Please wait."
-        )
-        await addToQueue()
-      }
+        setTimeout(() => {
+          addMessage(allQuestions[6], false)
+        }, 1000)
+        setTimeout(() => {
+          addMessage(allQuestions[7], false)
+          addToQueue()
+        }, 1000)
+        break
     }
-  }
 
-  const handleUserInfoInput = async (input: string) => {
-    const updatedInfo = { ...userInfo } as UserInfo
-    switch (currentQuestion) {
-      case 0:
-        updatedInfo.email = input
-        break
-      case 1:
-        updatedInfo.firstName = input
-        break
-      case 2:
-        updatedInfo.lastName = input
-        break
-      case 3:
-        updatedInfo.bookingId = input
-        break
-    }
-    setUserInfo(updatedInfo)
-    setCurrentQuestion((prev) => prev + 1)
-
-    if (currentQuestion < questions.length - 1) {
-      await showThinkingThenMessage(questions[currentQuestion + 1])
-    } else if (currentQuestion === questions.length - 1) {
-      await showThinkingThenMessage("Thank you for providing your information. How can we help you today?")
-    }
+    setInputMessage("")
   }
 
   const addToQueue = async () => {
@@ -147,15 +132,32 @@ export default function ChatInterface({ onClose }: ChatInterfaceProps) {
         body: JSON.stringify({ userInfo, messages }),
       })
       if (response.ok) {
-        await showThinkingThenMessage("You've been added to the queue. An agent will be with you shortly.")
+        // await addMessage(allQuestions[7], false)
       } else {
-        await showThinkingThenMessage("There was an error adding you to the queue. Please try again later.")
+        // await addMessage("There was an error adding you to the queue. Please try again later.", false)
       }
     } catch (error) {
       console.error("Error adding to queue:", error)
-      await showThinkingThenMessage("There was an error connecting to our service. Please try again later.")
+      // await addMessage("There was an error connecting to our service. Please try again later.", false)
     }
   }
+
+  const scrollToBottom = useCallback(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+  }, [])
+
+  useEffect(() => {
+    if (!isInitialized && messages.length === 0) {
+      console.log("isInitialized", isInitialized)
+      // Show initial message
+      addMessage(allQuestions[0], false)
+      setIsInitialized(true)
+    }
+  }, [isInitialized, messages.length])
+
+  useEffect(() => {
+    scrollToBottom()
+  }, [messages, scrollToBottom])
 
   return (
     <div className="fixed inset-0 md:inset-auto md:bottom-4 md:right-4 md:w-96 md:h-[600px] bg-white rounded-none md:rounded-2xl shadow-xl flex flex-col z-50">
@@ -185,19 +187,22 @@ export default function ChatInterface({ onClose }: ChatInterfaceProps) {
             <p className="text-gray-600">Messages from the team will be shown here</p>
           </div>
         ) : (
-          messages.map((message) => (
-            <div key={message.id} className={`flex ${message.isUser ? "justify-end" : "justify-start"} mb-4`}>
-              {!message.isUser && (
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center mr-2 flex-shrink-0 overflow-hidden">
-                  <Image src="/flixy.png" alt="Flixy" width={32} height={32} />
+          <>
+            {messages.map((message) => (
+              <div key={message.id} className={`flex ${message.isUser ? "justify-end" : "justify-start"} mb-4`}>
+                {!message.isUser && (
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center mr-2 flex-shrink-0 overflow-hidden">
+                    <Image src="/flixy.png" alt="Flixy" width={32} height={32} />
+                  </div>
+                )}
+                <div className={`max-w-[80%] ${message.isUser ? "bg-black text-white rounded-[20px] rounded-br-sm" : "bg-white shadow-sm rounded-[20px] rounded-tl-sm"} p-3`}>
+                  {!message.isUser && <div className="font-semibold mb-1">Flixy • AI Agent</div>}
+                  {message.text}
                 </div>
-              )}
-              <div className={`max-w-[80%] ${message.isUser ? "bg-black text-white rounded-[20px] rounded-br-sm" : "bg-white shadow-sm rounded-[20px] rounded-tl-sm"} p-3`}>
-                {!message.isUser && <div className="font-semibold mb-1">Flixy • AI Agent</div>}
-                {message.text}
               </div>
-            </div>
-          ))
+            ))}
+            <div ref={messagesEndRef} />
+          </>
         )}
       </div>
 
