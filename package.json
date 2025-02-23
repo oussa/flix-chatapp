@@ -16,9 +16,7 @@
     "db:up": "drizzle-kit up"
   },
   "dependencies": {
-    "@headlessui/react": "^2.2.0",
-    "@heroicons/react": "^2.2.0",
-    "@vercel/postgres": "^0.10.0",
+    "@radix-ui/react-slot": "^1.1.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "dotenv": "^16.4.7",
@@ -28,9 +26,8 @@
     "pg": "^8.13.3",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "react-hot-toast": "^2.5.2",
     "tailwind-merge": "^3.0.2",
-    "tsx": "^4.19.3"
+    "tailwindcss-animate": "^1.0.7"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
