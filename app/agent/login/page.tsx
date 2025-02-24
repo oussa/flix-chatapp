@@ -23,7 +23,7 @@ export default function AgentLogin() {
       } else {
         setError('Invalid credentials')
       }
-    } catch (err) {
+    } catch (err) { // eslint-disable-line @typescript-eslint/no-unused-vars
       setError('An error occurred. Please try again.')
     }
   }

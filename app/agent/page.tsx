@@ -94,7 +94,7 @@ export default function AgentDashboard() {
       socket.off(ServerEvents.NEW_CONVERSATION);
       socket.off(ServerEvents.CONVERSATION_RESOLVED);
     };
-  }, [socket, selectedConversation]);
+  }, [socket, selectedConversation, conversations]);
 
   // Join conversation messages channel when selected
   useEffect(() => {

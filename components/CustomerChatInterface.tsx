@@ -37,6 +37,17 @@ interface ChatInterfaceProps {
   onClose: () => void
 }
 
+const allQuestions = [
+  "Hello, I'm Flixy your AI agent. How can I help you today?",
+  "To best serve you I still need some information before handing over to one of our human agents.",
+  "What's your email address?",
+  "What's your first name?",
+  "What's your last name?",
+  "Do you have a booking ID? If so, please enter it. If not, just type 'no'.",
+  "Thank you for providing your information. We're connecting you with a support agent. Please wait..",
+  "You've been added to the queue. An agent will be with you shortly."
+]
+
 export default function ChatInterface({ onClose }: ChatInterfaceProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const socketRef = useRef<ClientSocket | null>(null)
@@ -46,19 +57,7 @@ export default function ChatInterface({ onClose }: ChatInterfaceProps) {
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null)
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
   const [isWaitingForAgent, setIsWaitingForAgent] = useState(false)
-  const [showPrivacyNotice, setShowPrivacyNotice] = useState(true)
   const [conversationId, setConversationId] = useState<number | null>(null)
-
-  const allQuestions = [
-    "Hello, I'm Flixy your AI agent. How can I help you today?",
-    "To best serve you I still need some information before handing over to one of our human agents.",
-    "What's your email address?",
-    "What's your first name?",
-    "What's your last name?",
-    "Do you have a booking ID? If so, please enter it. If not, just type 'no'.",
-    "Thank you for providing your information. We're connecting you with a support agent. Please wait..",
-    "You've been added to the queue. An agent will be with you shortly."
-  ]
 
   // Load session from localStorage on mount
   useEffect(() => {
@@ -84,7 +83,7 @@ export default function ChatInterface({ onClose }: ChatInterfaceProps) {
       if (response.ok) {
         const data = await response.json();
         // Convert messages from API format to our format
-        const formattedMessages = data.messages.map((msg: any) => ({
+        const formattedMessages = data.messages.map((msg: { id: string, content: string, isFromUser: boolean, createdAt: string }) => ({
           id: msg.id.toString(),
           text: msg.content,
           isUser: msg.isFromUser,
@@ -280,7 +279,7 @@ export default function ChatInterface({ onClose }: ChatInterfaceProps) {
       addMessage(allQuestions[0], false)
       setIsInitialized(true)
     }
-  }, [isInitialized, messages.length])
+  }, [isInitialized, messages.length, addMessage])
 
   useEffect(() => {
     scrollToBottom()
@@ -455,7 +454,7 @@ export default function ChatInterface({ onClose }: ChatInterfaceProps) {
 
       {/* Input Area */}
       <div className="p-4 pt-2">
-        {showPrivacyNotice && messages.length === 0 && (
+        {messages.length < 2 && (
           <div className="text-xs text-gray-500 mb-2">
             By chatting with us, you agree to the monitoring and recording of this chat to deliver our services and processing of your personal data in accordance with our Privacy Policy.
           </div>
