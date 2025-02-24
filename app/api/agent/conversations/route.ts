@@ -1,13 +1,7 @@
-import { NextResponse } from "next/server"
-import { db } from "@/drizzle/db"
-import { conversations, messages } from "@/drizzle/schema"
-import { eq, desc, and } from "drizzle-orm"
-import type { NextApiResponseServerIO } from '@/types/socket'
-import { Server as ServerIO } from 'socket.io'
-
-declare global {
-  var io: ServerIO;
-}
+import { NextResponse } from 'next/server'
+import { db } from '@/drizzle/db'
+import { conversations, messages } from '@/drizzle/schema'
+import { eq, desc, and } from 'drizzle-orm'
 
 // Get all conversations with their messages
 export async function GET(request: Request) {
@@ -16,7 +10,7 @@ export async function GET(request: Request) {
     const status = searchParams.get('status') || 'open'
     const agentId = searchParams.get('agentId')
 
-    let conditions = [eq(conversations.status, status)]
+    const conditions = [eq(conversations.status, status)]
     if (agentId) {
       conditions.push(eq(conversations.assignedAgentId, parseInt(agentId)))
     }
@@ -45,9 +39,9 @@ export async function GET(request: Request) {
 
     return NextResponse.json(conversationsWithMessages)
   } catch (error) {
-    console.error("Error fetching conversations:", error)
+    console.error('Error fetching conversations:', error)
     return NextResponse.json(
-      { error: "Failed to fetch conversations" },
+      { error: 'Failed to fetch conversations' },
       { status: 500 }
     )
   }
@@ -65,32 +59,19 @@ export async function POST(request: Request) {
         .set({ isRead: true })
         .where(eq(conversations.id, conversationId))
 
-      // Emit conversation update to all agents
-      global.io?.to('agents').emit('conversation-updated', {
-        id: conversationId,
-        isRead: true,
-      })
-
-      return NextResponse.json({ message: "Conversation marked as read" })
+      return NextResponse.json({ message: 'Conversation marked as read' })
     }
 
     if (action === 'assign') {
       await db
         .update(conversations)
-        .set({ 
+        .set({
           assignedAgentId: agentId,
-          isRead: true 
+          isRead: true
         })
         .where(eq(conversations.id, conversationId))
 
-      // Emit conversation update to all agents
-      global.io?.to('agents').emit('conversation-updated', {
-        id: conversationId,
-        assignedAgentId: agentId,
-        isRead: true,
-      })
-
-      return NextResponse.json({ message: "Conversation assigned" })
+      return NextResponse.json({ message: 'Conversation assigned' })
     }
 
     if (action === 'reply') {
@@ -108,32 +89,26 @@ export async function POST(request: Request) {
       // Update conversation
       await db
         .update(conversations)
-        .set({ 
+        .set({
           lastMessageAt: new Date(),
           updatedAt: new Date()
         })
         .where(eq(conversations.id, conversationId))
 
-      // Emit new message to conversation room and specific agent
-      global.io?.to(`conversation-${conversationId}`).emit('new-message', {
-        ...newMessage,
-        conversationId,
-      })
-
       return NextResponse.json({
-        message: "Reply sent",
+        message: 'Reply sent',
         data: newMessage
       })
     }
 
     return NextResponse.json(
-      { error: "Invalid action" },
+      { error: 'Invalid action' },
       { status: 400 }
     )
   } catch (error) {
-    console.error("Error updating conversation:", error)
+    console.error('Error updating conversation:', error)
     return NextResponse.json(
-      { error: "Failed to update conversation" },
+      { error: 'Failed to update conversation' },
       { status: 500 }
     )
   }
@@ -147,30 +122,18 @@ export async function PATCH(request: Request) {
 
     await db
       .update(conversations)
-      .set({ 
+      .set({
         status: 'closed',
         updatedAt: new Date()
       })
       .where(eq(conversations.id, conversationId))
 
-    // Emit conversation update to all agents
-    global.io?.to('agents').emit('conversation-updated', {
-      id: conversationId,
-      status: 'closed',
-    });
-
-    // Emit conversation resolved event to the specific conversation room
-    global.io?.to(`conversation-${conversationId}`).emit('conversation-resolved', {
-      id: conversationId,
-      message: "This conversation has been marked as resolved by the agent. Thank you for using our service."
-    });
-
-    return NextResponse.json({ message: "Conversation closed" })
+    return NextResponse.json({ message: 'Conversation closed' })
   } catch (error) {
-    console.error("Error closing conversation:", error)
+    console.error('Error closing conversation:', error)
     return NextResponse.json(
-      { error: "Failed to close conversation" },
+      { error: 'Failed to close conversation' },
       { status: 500 }
     )
   }
-} 
+}

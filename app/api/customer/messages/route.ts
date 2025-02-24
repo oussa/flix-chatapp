@@ -1,12 +1,7 @@
-import { NextResponse } from "next/server"
-import { db } from "@/drizzle/db"
-import { messages, conversations } from "@/drizzle/schema"
-import { eq, and } from "drizzle-orm"
-import { Server as ServerIO } from 'socket.io'
-
-declare global {
-  var io: ServerIO;
-}
+import { NextResponse } from 'next/server'
+import { db } from '@/drizzle/db'
+import { messages, conversations } from '@/drizzle/schema'
+import { eq, and } from 'drizzle-orm'
 
 export async function GET(request: Request) {
   try {
@@ -15,7 +10,7 @@ export async function GET(request: Request) {
 
     if (!conversationId) {
       return NextResponse.json(
-        { error: "Conversation ID is required" },
+        { error: 'Conversation ID is required' },
         { status: 400 }
       );
     }
@@ -32,7 +27,7 @@ export async function GET(request: Request) {
 
     if (!conversation.length) {
       return NextResponse.json(
-        { error: "Conversation not found or resolved" },
+        { error: 'Conversation not found or resolved' },
         { status: 404 }
       );
     }
@@ -46,9 +41,9 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ messages: messageHistory });
   } catch (error) {
-    console.error("Error fetching messages:", error);
+    console.error('Error fetching messages:', error);
     return NextResponse.json(
-      { error: "Failed to fetch messages" },
+      { error: 'Failed to fetch messages' },
       { status: 500 }
     );
   }

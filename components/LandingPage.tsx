@@ -1,11 +1,11 @@
-import Link from "next/link"
-import Image from "next/image"
-import { Button } from "@/components/ui/button"
-import { MessageSquare } from "lucide-react"
-import * as icons from "lucide-react"
-import { useState, useEffect } from "react"
-import { getHelpTopics, type HelpTopic } from "@/app/actions/help-topics"
-import { LucideIcon } from "lucide-react"
+import Link from 'next/link'
+import Image from 'next/image'
+import { Button } from '@/components/ui/button'
+import { MessageSquare } from 'lucide-react'
+import * as icons from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { getHelpTopics, type HelpTopic } from '@/app/actions/help-topics'
+import { LucideIcon } from 'lucide-react'
 
 interface LandingPageProps {
   searchQuery: string
@@ -88,13 +88,14 @@ export default function LandingPage({ searchQuery, onChatOpen }: LandingPageProp
             const IconComponent = icons[topic.icon] as LucideIcon
             return (
               <Link key={topic.id} href={topic.link} className="block group h-full transform-gpu">
-                <div className="bg-white rounded-[20px] p-6 shadow-[0_2px_20px_rgba(0,0,0,0.08)] hover:shadow-[0_2px_20px_rgba(0,0,0,0.12)] transition-all duration-300 ease-out h-full flex flex-col items-center text-center group-hover:scale-[1.02] origin-center">
+                <div
+                  className="bg-white rounded-[20px] p-6 shadow-[0_2px_20px_rgba(0,0,0,0.08)] hover:shadow-[0_2px_20px_rgba(0,0,0,0.12)] transition-all duration-300 ease-out h-full flex flex-col items-center text-center group-hover:scale-[1.02] origin-center">
                   <div className="mb-4">
-                    <IconComponent className="h-8 w-8 text-[#31a200]" strokeWidth={1.5} />
+                    <IconComponent className="h-8 w-8 text-[#31a200]" strokeWidth={1.5}/>
                   </div>
                   <h2 className="text-xl font-semibold text-[#2D3436] mb-4">{topic.title}</h2>
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     className="mt-auto border-[#31a200] text-[#31a200] hover:bg-[#31a200] hover:text-white"
                   >
                     LEARN MORE
@@ -110,11 +111,11 @@ export default function LandingPage({ searchQuery, onChatOpen }: LandingPageProp
             <h3 className="text-2xl font-semibold mb-4">
               No results found for your search
             </h3>
-            <Button 
+            <Button
               className="bg-[#31a200] text-white hover:bg-[#31a200]/90"
               onClick={onChatOpen}
             >
-              <MessageSquare className="mr-2 h-5 w-5" />
+              <MessageSquare className="mr-2 h-5 w-5"/>
               Chat with our customer support
             </Button>
           </div>

@@ -9,12 +9,11 @@ import { logout, getSession } from '@/app/actions/auth';
 import { useSocket } from '@/lib/socket';
 import {
   CustomerEvents,
-  AgentEvents, 
+  AgentEvents,
   ServerEvents,
 } from '@/types/events';
-import { 
+import {
   type MessagePayload,
-  type TypingPayload,
   type ConversationUpdatePayload,
   type ConversationResolvedPayload,
   type ErrorEvent,
@@ -34,7 +33,7 @@ export default function AgentDashboard() {
   const [agentId, setAgentId] = useState<number | null>(null);
 
   const scrollToBottom = useCallback(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, []);
 
   // Add effect to scroll when messages change or conversation is selected
@@ -58,15 +57,15 @@ export default function AgentDashboard() {
         const updatedConvs = prevConvs.map(conv =>
           conv.id === data.conversationId
             ? {
-                ...conv,
-                latestMessage: data.latestMessage,
-                lastMessageAt: data.lastMessageAt,
-                isRead: data.isRead
-              }
+              ...conv,
+              latestMessage: data.latestMessage,
+              lastMessageAt: data.lastMessageAt,
+              isRead: data.isRead
+            }
             : conv
         );
         // Sort by lastMessageAt
-        return [...updatedConvs].sort((a, b) => 
+        return [...updatedConvs].sort((a, b) =>
           new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime()
         );
       });
@@ -84,7 +83,7 @@ export default function AgentDashboard() {
     socket.on(ServerEvents.CONVERSATION_RESOLVED, (data: ConversationResolvedPayload) => {
       if (data.conversationId === selectedConversation) {
         setSelectedConversation(null);
-        setConversations(prevConvs => 
+        setConversations(prevConvs =>
           prevConvs.filter(conv => conv.id !== data.conversationId)
         );
       }
@@ -114,12 +113,12 @@ export default function AgentDashboard() {
         prevConvs.map(conv =>
           conv.id === message.conversationId
             ? {
-                ...conv,
-                messages: [...conv.messages, message],
-                lastMessageAt: message.createdAt,
-                // Only mark as unread if message is from user
-                isRead: !message.isFromUser
-              }
+              ...conv,
+              messages: [...conv.messages, message],
+              lastMessageAt: message.createdAt,
+              // Only mark as unread if message is from user
+              isRead: !message.isFromUser
+            }
             : conv
         )
       );
@@ -139,10 +138,10 @@ export default function AgentDashboard() {
         prevConvs.map(conv =>
           conv.id === message.conversationId
             ? {
-                ...conv,
-                messages: [...conv.messages, message],
-                lastMessageAt: message.createdAt
-              }
+              ...conv,
+              messages: [...conv.messages, message],
+              lastMessageAt: message.createdAt
+            }
             : conv
         )
       );
@@ -187,7 +186,7 @@ export default function AgentDashboard() {
       if (response.ok) {
         const data = await response.json();
         // Sort conversations by lastMessageAt
-        const sortedData = data.sort((a: Conversation, b: Conversation) => 
+        const sortedData = data.sort((a: Conversation, b: Conversation) =>
           new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime()
         );
         setConversations(sortedData);
@@ -200,7 +199,7 @@ export default function AgentDashboard() {
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     const messageContent = message.trim();
-    
+
     // Validate message content and required fields
     if (!messageContent || !selectedConversation || !agentId || !socket) {
       console.error('Invalid message data:', { messageContent, selectedConversation, agentId });
@@ -239,7 +238,7 @@ export default function AgentDashboard() {
     if (selectedConversation && socket) {
       socket.emit(CustomerEvents.DISCONNECT, selectedConversation);
     }
-    
+
     setSelectedConversation(convId);
     if (!agentId || !socket) return;
 
@@ -317,7 +316,7 @@ export default function AgentDashboard() {
             setSelectedConversation(null);
           }
           // Remove the resolved conversation from the list
-          setConversations(prevConvs => 
+          setConversations(prevConvs =>
             prevConvs.filter(conv => conv.id !== resolvedId)
           );
           // Remove from localStorage to prevent duplicate handling
@@ -382,9 +381,10 @@ export default function AgentDashboard() {
                   >
                     <div className="flex items-start space-x-4">
                       <div className="relative flex-shrink-0">
-                        <UserAvatar firstName={conv.firstName} lastName={conv.lastName} size="md" />
+                        <UserAvatar firstName={conv.firstName} lastName={conv.lastName} size="md"/>
                         {!conv.isRead && (
-                          <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white" />
+                          <div
+                            className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white"/>
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
@@ -392,8 +392,12 @@ export default function AgentDashboard() {
                           <span className={`font-medium truncate ${!conv.isRead ? 'text-green-700' : 'text-gray-900'}`}>
                             {conv.firstName} {conv.lastName}
                           </span>
-                          <span className={`text-xs ${!conv.isRead ? 'text-green-600 font-medium' : 'text-gray-500'} flex-shrink-0`}>
-                            {new Date(conv.lastMessageAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          <span
+                            className={`text-xs ${!conv.isRead ? 'text-green-600 font-medium' : 'text-gray-500'} flex-shrink-0`}>
+                            {new Date(conv.lastMessageAt).toLocaleTimeString([], {
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
                           </span>
                         </div>
                         <div className="flex items-center gap-2 mb-1">
@@ -401,7 +405,8 @@ export default function AgentDashboard() {
                             {conv.email}
                           </span>
                         </div>
-                        <div className={`text-sm truncate ${!conv.isRead ? 'text-green-600 font-medium' : 'text-gray-600'}`}>
+                        <div
+                          className={`text-sm truncate ${!conv.isRead ? 'text-green-600 font-medium' : 'text-gray-600'}`}>
                           {conv.latestMessage || conv.messages[conv.messages.length - 1]?.content || 'No messages'}
                         </div>
                       </div>
@@ -413,7 +418,8 @@ export default function AgentDashboard() {
                 <div className="flex flex-col items-center justify-center h-full text-center p-4">
                   <div className="text-gray-400 mb-2">
                     <svg className="w-12 h-12 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                            d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
                     </svg>
                   </div>
                   <p className="text-gray-600 font-medium">No active conversations</p>
@@ -432,7 +438,7 @@ export default function AgentDashboard() {
                     <div className="flex items-center space-x-4">
                       {conversations.find(c => c.id === selectedConversation) && (
                         <>
-                          <UserAvatar 
+                          <UserAvatar
                             firstName={conversations.find(c => c.id === selectedConversation)!.firstName}
                             lastName={conversations.find(c => c.id === selectedConversation)!.lastName}
                             size="lg"
@@ -454,7 +460,7 @@ export default function AgentDashboard() {
                         </>
                       )}
                     </div>
-                    <Button 
+                    <Button
                       variant="outline"
                       onClick={() => setIsConfirmationOpen(true)}
                     >
@@ -486,7 +492,7 @@ export default function AgentDashboard() {
                       </div>
                     </div>
                   ))}
-                  <div ref={messagesEndRef} />
+                  <div ref={messagesEndRef}/>
                 </div>
 
                 <div className="p-4 border-t">
@@ -506,7 +512,7 @@ export default function AgentDashboard() {
                         className="flex-1 border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#31a200]"
                         placeholder="Type your message..."
                       />
-                      <Button 
+                      <Button
                         type="submit"
                         disabled={!message.trim()}
                       >
@@ -536,4 +542,4 @@ export default function AgentDashboard() {
       />
     </div>
   );
-} 
+}

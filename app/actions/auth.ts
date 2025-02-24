@@ -9,13 +9,13 @@ import { compare } from 'bcrypt'
 export async function login(email: string, password: string): Promise<boolean> {
   try {
     const agent = await db.select().from(agents).where(eq(agents.email, email)).limit(1)
-    
+
     if (!agent.length) {
       return false
     }
 
     const isValid = await compare(password, agent[0].password)
-    
+
     if (isValid) {
       // Set session cookie
       (await cookies()).set('agent_session', agent[0].id.toString(), {

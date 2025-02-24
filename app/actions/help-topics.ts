@@ -2,7 +2,7 @@
 
 import { db } from '@/drizzle/db'
 import { helpTopics } from '@/drizzle/schema'
-import { desc, asc } from 'drizzle-orm'
+import { asc } from 'drizzle-orm'
 import * as icons from 'lucide-react'
 
 export type HelpTopic = {
@@ -14,11 +14,11 @@ export type HelpTopic = {
 
 export async function getHelpTopics(): Promise<HelpTopic[]> {
   const topics = await db.select().from(helpTopics).orderBy(asc(helpTopics.sortOrder))
-  
+
   return topics.map(topic => ({
     id: topic.id,
     title: topic.title,
     icon: topic.icon as keyof typeof icons,
     link: topic.link
   }))
-} 
+}

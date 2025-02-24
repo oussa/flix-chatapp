@@ -8,4 +8,4 @@ export default function AgentLayout({
   children: React.ReactNode;
 }) {
   return <SocketProvider>{children}</SocketProvider>;
-} 
+}

@@ -1,30 +1,30 @@
-"use client"
+'use client'
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { login } from "@/app/actions/auth"
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { login } from '@/app/actions/auth'
 
 export default function AgentLogin() {
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [error, setError] = useState("")
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
   const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError("")
+    setError('')
 
     try {
       const success = await login(email, password)
       if (success) {
-        router.push("/agent")
+        router.push('/agent')
       } else {
-        setError("Invalid credentials")
+        setError('Invalid credentials')
       }
     } catch (err) {
-      setError("An error occurred. Please try again.")
+      setError('An error occurred. Please try again.')
     }
   }
 
@@ -90,4 +90,4 @@ export default function AgentLogin() {
       </div>
     </div>
   )
-} 
+}
