@@ -5,7 +5,7 @@ import Link from "next/link"
 import LandingPage from "@/components/LandingPage"
 import ChatButton from "@/components/ChatButton"
 import ChatInterface from "@/components/CustomerChatInterface"
-import { Search } from "lucide-react"
+import { Search, X } from "lucide-react"
 
 export default function Home() {
   const [isChatOpen, setIsChatOpen] = useState(false)
@@ -32,8 +32,16 @@ export default function Home() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="How can we help you today?"
-                  className="w-full h-12 pl-11 pr-4 rounded-full bg-white text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-white/20"
+                  className="w-full h-12 pl-11 pr-11 rounded-full bg-white text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-white/20"
                 />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery("")}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                )}
               </div>
             </div>
           </div>

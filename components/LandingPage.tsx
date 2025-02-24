@@ -107,7 +107,7 @@ export default function LandingPage({ searchQuery, onChatOpen }: LandingPageProp
 
         {filteredTopics.length === 0 && (
           <div className="text-center py-12">
-            <h3 className="text-xl font-semibold text-white mb-4">
+            <h3 className="text-2xl font-semibold mb-4">
               No results found for your search
             </h3>
             <Button 
@@ -115,7 +115,7 @@ export default function LandingPage({ searchQuery, onChatOpen }: LandingPageProp
               onClick={onChatOpen}
             >
               <MessageSquare className="mr-2 h-5 w-5" />
-              Start a Chat
+              Chat with our customer support
             </Button>
           </div>
         )}

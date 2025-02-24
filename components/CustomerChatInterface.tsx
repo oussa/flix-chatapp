@@ -1,7 +1,6 @@
 "use client"
 
-import { useState, useEffect, useLayoutEffect, memo, useCallback, useRef } from "react"
-import { Button } from "@/components/ui/button"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { Input } from "@/components/ui/input"
 import { X } from "lucide-react"
 import Image from "next/image"
@@ -9,13 +8,11 @@ import { v4 as uuidv4 } from 'uuid'
 import { io } from 'socket.io-client'
 import { 
   CustomerEvents, 
-  AgentEvents, 
   ServerEvents,
 } from '@/types/events'
 import {
   type Message as ServerMessage,
   type MessagePayload,
-  type TypingPayload,
   type ConversationResolvedPayload,
   type ErrorEvent,
   type ClientSocket
@@ -80,17 +77,6 @@ export default function ChatInterface({ onClose }: ChatInterfaceProps) {
     }
   }, []);
 
-  // Save session to localStorage when it changes
-  useEffect(() => {
-    if (conversationId && userInfo) {
-      localStorage.setItem('chatSession', JSON.stringify({
-        conversationId,
-        userInfo,
-        timestamp: Date.now()
-      }));
-    }
-  }, [conversationId, userInfo]);
-
   // Fetch conversation history
   const fetchConversationHistory = async (convId: number) => {
     try {
@@ -105,6 +91,15 @@ export default function ChatInterface({ onClose }: ChatInterfaceProps) {
           timestamp: new Date(msg.createdAt).getTime()
         }));
         setMessages(formattedMessages);
+      } else if (response.status === 404) {
+        // Conversation not found. Likely it was resolved by the agent. Clean up local state
+        localStorage.removeItem('chatSession');
+        setConversationId(null);
+        setUserInfo(null);
+        setIsWaitingForAgent(false);
+        setCurrentQuestionIndex(0);
+        setMessages([]);
+        setIsInitialized(false);
       }
     } catch (error) {
       console.error('Error fetching conversation history:', error);
@@ -192,6 +187,7 @@ export default function ChatInterface({ onClose }: ChatInterfaceProps) {
       setTimeout(scrollToBottom, 100);
     } else {
       // Process the user's response based on current question
+      // TODO: This is a bit of a mess. We should refactor this to be more manageable.
       switch (currentQuestionIndex) {
         case 0: // Initial greeting
           addMessage(messageContent, true);
@@ -258,7 +254,7 @@ export default function ChatInterface({ onClose }: ChatInterfaceProps) {
 
   const addToQueue = async () => {
     try {
-      const response = await fetch("/api/queue", {
+      const response = await fetch("/api/conversations", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -375,7 +371,7 @@ export default function ChatInterface({ onClose }: ChatInterfaceProps) {
         setMessages(prev => prev.filter(m => typeof m.id !== 'string' || !m.id.startsWith('temp-')));
       });
 
-      socket.on(ServerEvents.CHAT_RESOLVED, (data: ConversationResolvedPayload) => {
+      socket.on(ServerEvents.CONVERSATION_RESOLVED, (data: ConversationResolvedPayload) => {
         console.log('Chat resolved:', data);
         
         // Add the resolution message
@@ -388,8 +384,8 @@ export default function ChatInterface({ onClose }: ChatInterfaceProps) {
 
         // Clear the session after a short delay
         setTimeout(() => {
+          console.log('conversationResolved');
           localStorage.removeItem('chatSession');
-          localStorage.setItem('conversationResolved', String(data.id));
           
           setConversationId(null);
           setUserInfo(null);
@@ -479,8 +475,8 @@ export default function ChatInterface({ onClose }: ChatInterfaceProps) {
             placeholder="Message..."
             value={inputMessage}
             onChange={(e) => setInputMessage(e.target.value)}
-            onKeyPress={(e) => e.key === "Enter" && handleSendMessage(e)}
-            className="w-full pl-4 pr-24 py-3 rounded-full border border-gray-200 focus:outline-none focus:ring-1 focus:ring-gray-200"
+            onKeyUp={(e) => e.key === "Enter" && handleSendMessage(e)}
+            className="w-full pl-4 pr-24 py-5 rounded-full border border-gray-200 focus:outline-none focus:ring-1 focus:ring-gray-200"
           />
         </div>
       </div>

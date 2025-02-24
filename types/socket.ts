@@ -49,7 +49,7 @@ export interface ConversationUpdatePayload {
 }
 
 export interface ConversationResolvedPayload {
-  id: number;
+  conversationId: number;
 }
 
 export interface Message {
@@ -72,20 +72,20 @@ export interface Conversation {
   assignedAgentId: number | null
   lastMessageAt: string
   messages: Message[]
+  latestMessage?: string
 }
 
 /**
  * Type definitions for event payloads
  */
 export interface ServerToClientEvents {
-  [ServerEvents.NEW_CONVERSATION]: (conversation: Conversation) => void;
+  [ServerEvents.NEW_CONVERSATION]: (conversationId: number) => void;
   [ServerEvents.NEW_MESSAGE]: (message: Message) => void;
   [ServerEvents.MESSAGE_SENT]: (message: Message) => void;
   [ServerEvents.CONVERSATION_UPDATED]: (data: ConversationUpdatePayload) => void;
   [ServerEvents.CUSTOMER_TYPING]: (data: TypingPayload) => void;
   [ServerEvents.AGENT_TYPING]: (data: TypingPayload) => void;
   [ServerEvents.CONVERSATION_RESOLVED]: (data: ConversationResolvedPayload) => void;
-  [ServerEvents.CHAT_RESOLVED]: (data: ConversationResolvedPayload) => void;
   [ServerEvents.ERROR]: (error: ErrorEvent) => void;
 }
 

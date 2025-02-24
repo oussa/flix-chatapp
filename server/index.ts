@@ -3,7 +3,7 @@ import next from "next";
 import { Server } from "socket.io";
 import '../environment';
 import { saveMessage } from "./messageService";
-import { createConversation, resolveConversation } from "./conversationService";
+import { resolveConversation } from "./conversationService";
 import { AgentEvents, CustomerEvents, ServerEvents } from "@/types/events";
 
 const activeCustomers = new Map();
@@ -24,21 +24,17 @@ app.prepare().then(() => {
   io.on("connection", (socket) => {
     console.log(`User connected: ${socket.id}`);
   
-    // socket.on("customer:createConversation", async ({ email, firstName, lastName, bookingId }) => {
-    //   const conversation = await createConversation(email, firstName, lastName, bookingId);
-    //   socket.emit("server:conversationCreated", conversation);
-    // });
-  
     socket.on(CustomerEvents.JOIN, ({ conversationId }) => {
       socket.join(conversationId);
       activeCustomers.set(socket.id, conversationId);
+      io.emit(ServerEvents.NEW_CONVERSATION, conversationId);
     });
   
     socket.on(CustomerEvents.MESSAGE, async ({ conversationId, content }) => {
       console.log("customer:message", conversationId, content);
       const savedMessage = await saveMessage({ conversationId, content, isFromUser: true });
       io.to(conversationId).emit(ServerEvents.NEW_MESSAGE, savedMessage);
-      io.emit(ServerEvents.CONVERSATION_UPDATED, { conversationId, latestMessage: content, unread: true });
+      io.emit(ServerEvents.CONVERSATION_UPDATED, { conversationId, latestMessage: content, lastMessageAt: savedMessage.createdAt, isRead: false });
     });
   
     socket.on(AgentEvents.JOIN, ({ conversationId }) => {
@@ -50,12 +46,13 @@ app.prepare().then(() => {
       console.log("agent:message", conversationId, content);
       const savedMessage = await saveMessage({ conversationId, content, isFromUser: false });
       io.to(conversationId).emit(ServerEvents.NEW_MESSAGE, savedMessage);
-      io.emit(ServerEvents.CONVERSATION_UPDATED, { conversationId, latestMessage: content, unread: false });
+      io.emit(ServerEvents.CONVERSATION_UPDATED, { conversationId, latestMessage: content, lastMessageAt: savedMessage.createdAt, isRead: true });
     });
   
-    socket.on(AgentEvents.RESOLVE_CONVERSATION, async ({ conversationId }) => {
+    socket.on(AgentEvents.RESOLVE_CONVERSATION, async (conversationId) => {
+      console.log("agent:resolveConversation", conversationId);
       await resolveConversation(conversationId);
-      io.to(conversationId).emit(ServerEvents.CONVERSATION_RESOLVED);
+      io.to(conversationId).emit(ServerEvents.CONVERSATION_RESOLVED, { conversationId });
       io.socketsLeave(conversationId);
     });
   

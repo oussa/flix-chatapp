@@ -47,6 +47,7 @@ export async function POST(request: Request) {
       .returning()
 
     // Emit new conversation to all agents
+    // TODO: check if this works!!
     global.io?.to('agents').emit('new-conversation', {
       ...conversation,
       messages: savedMessages

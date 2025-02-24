@@ -35,5 +35,4 @@ export enum ServerEvents {
   CONVERSATION_RESOLVED = 'server:conversation-resolved',
   ERROR = 'server:message-error',
   MESSAGE_SENT = 'server:message-sent',
-  CHAT_RESOLVED = 'server:chat-resolved'
 }

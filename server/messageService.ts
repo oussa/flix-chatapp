@@ -54,7 +54,6 @@ export const saveMessage = async ({
       createdAt: now.toISOString()
     };
 
-    // update conversation last message at
     await db.update(conversations).set({ lastMessageAt: now, isRead: !isFromUser }).where(eq(conversations.id, conversationId));
 
     return message;

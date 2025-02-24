@@ -63,11 +63,12 @@ export default function AgentDashboard() {
             ? {
                 ...conv,
                 latestMessage: data.latestMessage,
-                lastMessageAt: data.lastMessageAt || new Date().toISOString(), // TODO: change this to the actual last message at
+                lastMessageAt: data.lastMessageAt,
                 isRead: data.isRead
               }
             : conv
         );
+        console.log('Updated conversations:', updatedConvs);
         // Sort by lastMessageAt
         return [...updatedConvs].sort((a, b) => 
           new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime()
@@ -76,23 +77,19 @@ export default function AgentDashboard() {
     });
 
     // Listen for new conversations
-    socket.on(ServerEvents.NEW_CONVERSATION, (conversation: Conversation) => {
-      console.log('New conversation received:', conversation);
-      setConversations(prevConvs => {
-        // Skip if we already have this conversation
-        if (prevConvs.some(conv => conv.id === conversation.id)) {
-          return prevConvs;
-        }
-        // Add new conversation and sort by lastMessageAt
-        return [conversation, ...prevConvs].sort((a, b) => 
-          new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime()
-        );
-      });
+    socket.on(ServerEvents.NEW_CONVERSATION, async (conversationId: number) => {
+      console.log('New conversation received:', conversationId);
+      // Skip if we already have this conversation
+      if (conversations.some(conv => conv.id === conversationId)) {
+        return;
+      }
+
+      await fetchConversations();
     });
 
     // Listen for resolved conversations
     socket.on(ServerEvents.CONVERSATION_RESOLVED, (data: ConversationResolvedPayload) => {
-      const resolvedId = data.id;
+      const resolvedId = data.conversationId;
       // Update selected conversation if it was resolved
       if (selectedConversation === resolvedId) {
         setSelectedConversation(null);
@@ -176,10 +173,10 @@ export default function AgentDashboard() {
 
     // Listen for chat resolved
     socket.on(ServerEvents.CHAT_RESOLVED, (data: ConversationResolvedPayload) => {
-      if (data.id === selectedConversation) {
+      if (data.conversationId === selectedConversation) {
         setSelectedConversation(null);
         setConversations(prevConvs => 
-          prevConvs.filter(conv => conv.id !== data.id)
+          prevConvs.filter(conv => conv.id !== data.conversationId)
         );
       }
     });
@@ -432,7 +429,7 @@ export default function AgentDashboard() {
                           </span>
                         </div>
                         <div className={`text-sm truncate ${!conv.isRead ? 'text-green-600 font-medium' : 'text-gray-600'}`}>
-                          {conv.messages[conv.messages.length - 1]?.content || 'No messages'}
+                          {conv.latestMessage || conv.messages[conv.messages.length - 1]?.content || 'No messages'}
                         </div>
                       </div>
                     </div>
