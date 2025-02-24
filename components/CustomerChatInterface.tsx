@@ -59,7 +59,6 @@ export default function ChatInterface({ onClose }: ChatInterfaceProps) {
   const [inputMessage, setInputMessage] = useState("")
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null)
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
-  const [isWaitingForAgent, setIsWaitingForAgent] = useState(false)
   const [conversationId, setConversationId] = useState<number | null>(null)
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -95,7 +94,6 @@ export default function ChatInterface({ onClose }: ChatInterfaceProps) {
     localStorage.removeItem('convId');
     setConversationId(null);
     setUserInfo(null);
-    setIsWaitingForAgent(false);
     setCurrentQuestionIndex(0);
     setMessages([]);
     setIsInitialized(false);
@@ -162,7 +160,7 @@ export default function ChatInterface({ onClose }: ChatInterfaceProps) {
 
     setInputMessage("");
 
-    if (isWaitingForAgent && conversationId && socket) {
+    if (conversationId && socket) {
       // Create the message payload first to ensure it's properly structured
       const messagePayload: MessagePayload = {
         conversationId,
@@ -249,7 +247,6 @@ export default function ChatInterface({ onClose }: ChatInterfaceProps) {
             bookingId: messageContent.toLowerCase() === 'no' ? undefined : messageContent
           } : null);
           setCurrentQuestionIndex(6);
-          setIsWaitingForAgent(true);
           setTimeout(() => {
             addMessage(allQuestions[6], false);
           }, 1000);
@@ -306,7 +303,7 @@ export default function ChatInterface({ onClose }: ChatInterfaceProps) {
       return;
     }
 
-    if (isWaitingForAgent && conversationId) {
+    if (conversationId) {
       socket.emit(CustomerEvents.JOIN, { conversationId });
 
       socket.on(ServerEvents.NEW_MESSAGE, (message: ServerMessage) => {
@@ -389,7 +386,7 @@ export default function ChatInterface({ onClose }: ChatInterfaceProps) {
       socket.off(ServerEvents.CONVERSATION_RESOLVED);
       socket.off(ServerEvents.ERROR);
     };
-  }, [socket, isWaitingForAgent, conversationId, scrollToBottom]);
+  }, [socket, conversationId, scrollToBottom]);
 
   return (
     <div 
