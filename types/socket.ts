@@ -42,7 +42,8 @@ export interface TypingPayload {
 }
 
 export interface ConversationUpdatePayload {
-  id: number;
+  conversationId: number;
+  latestMessage: string;
   lastMessageAt: string;
   isRead: boolean;
 }

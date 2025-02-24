@@ -7,33 +7,33 @@
  * Events emitted by the Customer UI to the server
  */
 export enum CustomerEvents {
-  JOIN = 'join-conversation',
-  MESSAGE = 'send-message',
+  JOIN = 'customer:join-conversation',
+  MESSAGE = 'customer:send-message',
   TYPING = 'customer:typing',
-  DISCONNECT = 'leave-conversation',
+  DISCONNECT = 'customer:leave-conversation',
 }
 
 /**
  * Events emitted by the Agent UI to the server
  */
 export enum AgentEvents {
-  JOIN = 'subscribe-agent',
-  MESSAGE = 'send-message',
-  RESOLVE_CONVERSATION = 'resolve-conversation',
-  DISCONNECT = 'leave-conversation',
+  JOIN = 'agent:join-conversation',
+  MESSAGE = 'agent:send-message',
+  RESOLVE_CONVERSATION = 'agent:resolve-conversation',
+  DISCONNECT = 'agent:leave-conversation',
 }
 
 /**
  * Events emitted by the Server to the clients (Customer & Agent UIs)
  */
 export enum ServerEvents {
-  NEW_CONVERSATION = 'new-conversation',
-  NEW_MESSAGE = 'message',
-  CONVERSATION_UPDATED = 'conversation-updated',
-  CUSTOMER_TYPING = 'customer:typing',
-  AGENT_TYPING = 'agent:typing',
-  CONVERSATION_RESOLVED = 'conversation-resolved',
-  ERROR = 'message-error',
-  MESSAGE_SENT = 'message-sent',
-  CHAT_RESOLVED = 'chat-resolved'
+  NEW_CONVERSATION = 'server:new-conversation',
+  NEW_MESSAGE = 'server:new-message',
+  CONVERSATION_UPDATED = 'server:conversation-updated',
+  CUSTOMER_TYPING = 'server:customer-typing',
+  AGENT_TYPING = 'server:agent-typing',
+  CONVERSATION_RESOLVED = 'server:conversation-resolved',
+  ERROR = 'server:message-error',
+  MESSAGE_SENT = 'server:message-sent',
+  CHAT_RESOLVED = 'server:chat-resolved'
 }

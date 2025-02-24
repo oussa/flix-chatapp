@@ -22,7 +22,7 @@ import {
 } from '@/types/socket';
 
 interface Message {
-  id: string
+  id: string | number
   text: string
   isUser: boolean
   timestamp: number
@@ -144,37 +144,57 @@ export default function ChatInterface({ onClose }: ChatInterfaceProps) {
 
   const handleSendMessage = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!inputMessage.trim()) return;
+    const messageContent = inputMessage.trim();
+    
+    // Validate message content
+    if (!messageContent) {
+      console.error('Message content cannot be empty');
+      return;
+    }
 
-    const messageText = inputMessage.trim();
     setInputMessage("");
 
     if (isWaitingForAgent && conversationId && socketRef.current) {
+      // Create the message payload first to ensure it's properly structured
+      const messagePayload: MessagePayload = {
+        conversationId,
+        content: messageContent,
+        isFromUser: true
+      };
+
+      // Validate the payload
+      if (!messagePayload.content || !messagePayload.conversationId) {
+        console.error('Invalid message payload:', messagePayload);
+        return;
+      }
+
       // Generate a temporary ID for optimistic update
       const tempId = `temp-${uuidv4()}`;
       
       // Add message optimistically
-      const newMessage = {
+      const newMessage: Message = {
         id: tempId,
-        text: messageText,
+        text: messageContent,
         isUser: true,
         timestamp: Date.now()
       };
       setMessages(prev => [...prev, newMessage]);
 
-      // Send through socket
-      socketRef.current.emit(CustomerEvents.MESSAGE, {
-        conversationId,
-        content: messageText,
-        isFromUser: true
-      } as MessagePayload);
+      try {
+        // Send through socket
+        socketRef.current.emit(CustomerEvents.MESSAGE, messagePayload);
+      } catch (error) {
+        console.error('Error sending message:', error);
+        // Remove the optimistic message if there was an error
+        setMessages(prev => prev.filter(m => m.id !== tempId));
+      }
 
       setTimeout(scrollToBottom, 100);
     } else {
       // Process the user's response based on current question
       switch (currentQuestionIndex) {
         case 0: // Initial greeting
-          addMessage(messageText, true);
+          addMessage(messageContent, true);
           setCurrentQuestionIndex(1);
           setTimeout(() => addMessage(allQuestions[1], false), 1000);
           setTimeout(() => {
@@ -183,10 +203,10 @@ export default function ChatInterface({ onClose }: ChatInterfaceProps) {
           }, 2000);
           break;
         case 2: // Email
-          addMessage(messageText, true);
-          if (messageText.includes('@')) {
+          addMessage(messageContent, true);
+          if (messageContent.includes('@')) {
             setUserInfo({
-              email: messageText,
+              email: messageContent,
               firstName: '',
               lastName: '',
             });
@@ -197,28 +217,28 @@ export default function ChatInterface({ onClose }: ChatInterfaceProps) {
           }
           break;
         case 3: // First name
-          addMessage(messageText, true);
+          addMessage(messageContent, true);
           setUserInfo(prev => prev ? {
             ...prev,
-            firstName: messageText
+            firstName: messageContent
           } : null);
           setCurrentQuestionIndex(4);
           setTimeout(() => addMessage(allQuestions[4], false), 1000);
           break;
         case 4: // Last name
-          addMessage(messageText, true);
+          addMessage(messageContent, true);
           setUserInfo(prev => prev ? {
             ...prev,
-            lastName: messageText
+            lastName: messageContent
           } : null);
           setCurrentQuestionIndex(5);
           setTimeout(() => addMessage(allQuestions[5], false), 1000);
           break;
         case 5: // Booking ID
-          addMessage(messageText, true);
+          addMessage(messageContent, true);
           setUserInfo(prev => prev ? {
             ...prev,
-            bookingId: messageText.toLowerCase() === 'no' ? undefined : messageText
+            bookingId: messageContent.toLowerCase() === 'no' ? undefined : messageContent
           } : null);
           setCurrentQuestionIndex(6);
           setIsWaitingForAgent(true);
@@ -287,14 +307,14 @@ export default function ChatInterface({ onClose }: ChatInterfaceProps) {
       const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3001', {
         path: '/socket.io',
         transports: ['websocket', 'polling'],
-        autoConnect: false, // Don't connect automatically
+        autoConnect: false,
       });
 
       // Setup event handlers before connecting
       socket.on('connect', () => {
         console.log('Connected to Socket.IO server with ID:', socket.id);
         // Join the messages channel for this conversation
-        socket.emit(CustomerEvents.JOIN, conversationId);
+        socket.emit(CustomerEvents.JOIN, { conversationId });
         console.log('Joined messages channel:', conversationId);
       });
 
@@ -305,34 +325,22 @@ export default function ChatInterface({ onClose }: ChatInterfaceProps) {
       socket.on(ServerEvents.NEW_MESSAGE, (message: ServerMessage) => {
         console.log('Received message:', message);
         
+        // Validate incoming message
+        if (!message || !message.content || !message.id) {
+          console.error('Invalid message received:', message);
+          return;
+        }
+        
         setMessages(prev => {
           // Skip if we already have this message
-          if (prev.some(m => m.id === String(message.id) || 
-              (m.id.startsWith('temp-') && m.text === message.content))) {
+          if (prev.some(m => m.id === message.id || 
+              (typeof m.id === 'string' && m.id.startsWith('temp-') && m.text === message.content))) {
             return prev;
-          }
-          
-          // Replace temporary message if it exists
-          const hasTempMessage = prev.some(m => 
-            m.id.startsWith('temp-') && m.text === message.content
-          );
-          
-          if (hasTempMessage) {
-            return prev.map(m => 
-              m.id.startsWith('temp-') && m.text === message.content
-                ? {
-                    id: String(message.id),
-                    text: message.content,
-                    isUser: message.isFromUser,
-                    timestamp: new Date(message.createdAt).getTime()
-                  }
-                : m
-            );
           }
           
           // Add new message
           return [...prev, {
-            id: String(message.id),
+            id: message.id,
             text: message.content,
             isUser: message.isFromUser,
             timestamp: new Date(message.createdAt).getTime()
@@ -342,12 +350,31 @@ export default function ChatInterface({ onClose }: ChatInterfaceProps) {
         setTimeout(scrollToBottom, 100);
       });
 
-      socket.on(ServerEvents.ERROR, (error: ErrorEvent) => {
-        console.error('Message error:', error);
-        setMessages(prev => prev.filter(m => !m.id.startsWith('temp-')));
+      socket.on(ServerEvents.MESSAGE_SENT, (message: ServerMessage) => {
+        // Validate confirmation message
+        if (!message || !message.content || !message.id) {
+          console.error('Invalid message confirmation received:', message);
+          return;
+        }
+
+        setMessages(prev => prev.map(m => 
+          typeof m.id === 'string' && m.id.startsWith('temp-') && m.text === message.content
+            ? {
+                id: message.id,
+                text: message.content,
+                isUser: message.isFromUser,
+                timestamp: new Date(message.createdAt).getTime()
+              }
+            : m
+        ));
       });
 
-      // Listen for chat resolved
+      socket.on(ServerEvents.ERROR, (error: ErrorEvent) => {
+        console.error('Message error:', error);
+        // Remove temporary message on error
+        setMessages(prev => prev.filter(m => typeof m.id !== 'string' || !m.id.startsWith('temp-')));
+      });
+
       socket.on(ServerEvents.CHAT_RESOLVED, (data: ConversationResolvedPayload) => {
         console.log('Chat resolved:', data);
         
@@ -359,10 +386,9 @@ export default function ChatInterface({ onClose }: ChatInterfaceProps) {
           timestamp: Date.now()
         }]);
 
-        // Clear the session after a short delay to allow reading the message
+        // Clear the session after a short delay
         setTimeout(() => {
           localStorage.removeItem('chatSession');
-          // Notify other tabs that this conversation was resolved
           localStorage.setItem('conversationResolved', String(data.id));
           
           setConversationId(null);
@@ -371,22 +397,19 @@ export default function ChatInterface({ onClose }: ChatInterfaceProps) {
           setCurrentQuestionIndex(0);
           setIsInitialized(false);
           
-          // Clear messages after a delay to allow reading the resolution message
+          // Clear messages after a delay
           setTimeout(() => {
             setMessages([]);
           }, 5000);
         }, 1000);
       });
 
-      // Store socket reference before connecting
+      // Store socket reference and connect
       socketRef.current = socket;
-
-      // Connect after all handlers are set up
       socket.connect();
 
       // Cleanup function
       return () => {
-        console.log('Cleaning up socket connection');
         if (socket.connected) {
           socket.emit(CustomerEvents.DISCONNECT, conversationId);
           socket.removeAllListeners();

@@ -55,6 +55,8 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  console.log('*********** NEVER GOT CALLED ***********')
+
   try {
     const body = await request.json()
     const { conversationId, content } = body

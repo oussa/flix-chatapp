@@ -17,6 +17,7 @@ import {
   type TypingPayload,
   type ConversationUpdatePayload,
   type ConversationResolvedPayload,
+  type ErrorEvent,
   type ClientSocket
 } from '@/types/socket';
 import type { Message, Conversation } from '@/types/socket';
@@ -47,18 +48,22 @@ export default function AgentDashboard() {
   useEffect(() => {
     if (!socket) return;
 
-    // Subscribe agent to conversations channel
-    socket.emit(AgentEvents.JOIN);
+    // TODO: double check listening on all conversations
+    if (selectedConversation) {
+      // Subscribe agent to conversations channel
+      socket.emit(AgentEvents.JOIN, { conversationId: selectedConversation });
+    }
 
     // Listen for conversation updates
     socket.on(ServerEvents.CONVERSATION_UPDATED, (data: ConversationUpdatePayload) => {
       console.log('Conversation updated:', data);
       setConversations(prevConvs => {
         const updatedConvs = prevConvs.map(conv =>
-          conv.id === data.id
+          conv.id === data.conversationId
             ? {
                 ...conv,
-                lastMessageAt: data.lastMessageAt,
+                latestMessage: data.latestMessage,
+                lastMessageAt: data.lastMessageAt || new Date().toISOString(), // TODO: change this to the actual last message at
                 isRead: data.isRead
               }
             : conv
@@ -112,10 +117,16 @@ export default function AgentDashboard() {
     if (!socket || !selectedConversation) return;
 
     // Join the messages channel
-    socket.emit(CustomerEvents.JOIN, selectedConversation);
+    socket.emit(CustomerEvents.JOIN, { conversationId: selectedConversation });
 
     // Listen for messages
     socket.on(ServerEvents.NEW_MESSAGE, (message: Message) => {
+      // Validate incoming message
+      if (!message || !message.content || !message.id || !message.conversationId) {
+        console.error('Invalid message received:', message);
+        return;
+      }
+
       setConversations(prevConvs =>
         prevConvs.map(conv =>
           conv.id === message.conversationId
@@ -134,6 +145,35 @@ export default function AgentDashboard() {
       }
     });
 
+    socket.on(ServerEvents.MESSAGE_SENT, (message: Message) => {
+      // Validate confirmation message
+      if (!message || !message.content || !message.id || !message.conversationId) {
+        console.error('Invalid message confirmation received:', message);
+        return;
+      }
+
+      // Update the conversation with the confirmed message
+      setConversations(prevConvs =>
+        prevConvs.map(conv =>
+          conv.id === message.conversationId
+            ? {
+                ...conv,
+                messages: [...conv.messages, message],
+                lastMessageAt: message.createdAt
+              }
+            : conv
+        )
+      );
+      if (selectedConversation === message.conversationId) {
+        setTimeout(scrollToBottom, 100);
+      }
+    });
+
+    socket.on(ServerEvents.ERROR, (error: ErrorEvent) => {
+      console.error('Message error:', error);
+      // Handle message error (e.g., show error notification to agent)
+    });
+
     // Listen for chat resolved
     socket.on(ServerEvents.CHAT_RESOLVED, (data: ConversationResolvedPayload) => {
       if (data.id === selectedConversation) {
@@ -150,6 +190,8 @@ export default function AgentDashboard() {
     return () => {
       socket.emit(CustomerEvents.DISCONNECT, selectedConversation);
       socket.off(ServerEvents.NEW_MESSAGE);
+      socket.off(ServerEvents.MESSAGE_SENT);
+      socket.off(ServerEvents.ERROR);
       socket.off(ServerEvents.CHAT_RESOLVED);
     };
   }, [selectedConversation, socket, scrollToBottom]);
@@ -187,17 +229,38 @@ export default function AgentDashboard() {
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!message.trim() || !selectedConversation || !agentId || !socket) return;
+    const messageContent = message.trim();
+    
+    // Validate message content and required fields
+    if (!messageContent || !selectedConversation || !agentId || !socket) {
+      console.error('Invalid message data:', { messageContent, selectedConversation, agentId });
+      return;
+    }
 
-    // Send message through Socket.IO
-    socket.emit(AgentEvents.MESSAGE, {
+    // Create the message payload first to ensure it's properly structured
+    const messagePayload: MessagePayload = {
       conversationId: selectedConversation,
-      content: message.trim(),
+      content: messageContent,
       isFromUser: false,
       agentId
-    } as MessagePayload);
+    };
+
+    // Additional validation of the payload
+    if (!messagePayload.content || !messagePayload.conversationId || !messagePayload.agentId) {
+      console.error('Invalid message payload:', messagePayload);
+      return;
+    }
 
     setMessage('');
+
+    try {
+      // Send message through Socket.IO
+      socket.emit(AgentEvents.MESSAGE, messagePayload);
+    } catch (error) {
+      console.error('Error sending message:', error);
+      // Optionally handle the error (e.g., show error message to agent)
+    }
+
     // Scroll to bottom after sending message
     setTimeout(scrollToBottom, 100);
   };

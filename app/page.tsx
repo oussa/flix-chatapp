@@ -4,7 +4,7 @@ import { useState } from "react"
 import Link from "next/link"
 import LandingPage from "@/components/LandingPage"
 import ChatButton from "@/components/ChatButton"
-import ChatInterface from "@/components/ChatInterface"
+import ChatInterface from "@/components/CustomerChatInterface"
 import { Search } from "lucide-react"
 
 export default function Home() {
