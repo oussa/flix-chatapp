@@ -27,9 +27,18 @@ export default function ConfirmationDialog({
   confirmText = "Confirm",
   cancelText = "Cancel"
 }: ConfirmationDialogProps) {
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      onClose();
+    }
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent 
+        className="sm:max-w-[425px]" 
+        onKeyDown={handleKeyDown}
+      >
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>
@@ -38,10 +47,28 @@ export default function ConfirmationDialog({
         </DialogHeader>
         <DialogFooter>
           <div className="flex gap-2 justify-end w-full">
-            <Button variant="outline" onClick={onClose}>
+            <Button 
+              variant="outline" 
+              onClick={onClose}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  onClose();
+                }
+              }}
+            >
               {cancelText}
             </Button>
-            <Button onClick={onConfirm} variant="default" className="bg-[#31a200] hover:bg-[#31a200]/90">
+            <Button 
+              onClick={onConfirm} 
+              variant="default" 
+              className="bg-[#31a200] hover:bg-[#31a200]/90"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  onConfirm();
+                }
+              }}
+              autoFocus
+            >
               {confirmText}
             </Button>
           </div>

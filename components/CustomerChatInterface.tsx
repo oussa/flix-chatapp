@@ -62,6 +62,12 @@ export default function ChatInterface({ onClose }: ChatInterfaceProps) {
   const [isWaitingForAgent, setIsWaitingForAgent] = useState(false)
   const [conversationId, setConversationId] = useState<number | null>(null)
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      onClose();
+    }
+  };
+
   useEffect(() => {
     messageInputRef.current?.focus();
     const convId = Number(localStorage.getItem('convId'));
@@ -69,7 +75,21 @@ export default function ChatInterface({ onClose }: ChatInterfaceProps) {
       setConversationId(convId);
       fetchConversationHistory(convId);
     }
-  }, []);
+
+    // Add global event listener for Escape key
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    
+    // Clean up event listener on component unmount
+    return () => {
+      window.removeEventListener('keydown', handleGlobalKeyDown);
+    };
+  }, [onClose]);
 
   const clearSession = () => {
     localStorage.removeItem('convId');
@@ -372,28 +392,49 @@ export default function ChatInterface({ onClose }: ChatInterfaceProps) {
   }, [socket, isWaitingForAgent, conversationId, scrollToBottom]);
 
   return (
-    <div className="fixed inset-0 md:inset-auto md:bottom-4 md:right-4 md:w-96 md:h-[600px] bg-white rounded-none md:rounded-2xl shadow-xl flex flex-col z-50">
+    <div 
+      className="fixed inset-0 md:inset-auto md:bottom-4 md:right-4 md:w-96 md:h-[600px] bg-white rounded-none md:rounded-2xl shadow-xl flex flex-col z-50"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="chat-title"
+      onKeyDown={handleKeyDown}
+      tabIndex={-1}
+    >
       {/* Header */}
       <div className="flex items-center p-4 border-b">
         <div className="flex items-center">
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center mr-2 overflow-hidden">
-            <Image src="/flixy.png" alt="Flixy" width={32} height={32} />
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center mr-2 overflow-hidden" aria-hidden="true">
+            <Image src="/flixy.png" alt="" width={32} height={32} />
           </div>
-          <span className="text-xl font-semibold">Flixy</span>
+          <span className="text-xl font-semibold" id="chat-title">Flixy</span>
         </div>
         <div className="ml-auto">
-          <button onClick={onClose}>
-            <X className="h-6 w-6" />
+          <button 
+            onClick={onClose}
+            aria-label="Close chat"
+            className="p-2 rounded-full hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-200"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                onClose();
+              }
+            }}
+          >
+            <X className="h-6 w-6" aria-hidden="true" />
           </button>
         </div>
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div 
+        className="flex-1 overflow-y-auto p-4 space-y-4"
+        role="log"
+        aria-live="polite"
+        aria-atomic="false"
+      >
         {messages.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-center px-4">
-            <div className="w-12 h-12 rounded-lg mb-4 flex items-center justify-center overflow-hidden">
-              <Image src="/flixy.png" alt="Flixy" width={48} height={48} />
+            <div className="w-12 h-12 rounded-lg mb-4 flex items-center justify-center overflow-hidden" aria-hidden="true">
+              <Image src="/flixy.png" alt="" width={48} height={48} />
             </div>
             <h2 className="text-2xl font-semibold mb-2">No messages</h2>
             <p className="text-gray-600">Messages from the team will be shown here</p>
@@ -401,13 +442,20 @@ export default function ChatInterface({ onClose }: ChatInterfaceProps) {
         ) : (
           <>
             {messages.map((message) => (
-              <div key={message.id} className={`flex ${message.isUser ? "justify-end" : "justify-start"} mb-4`}>
+              <div 
+                key={message.id} 
+                className={`flex ${message.isUser ? "justify-end" : "justify-start"} mb-4`}
+                role="article"
+                aria-label={`${message.isUser ? "You" : "Support agent"} said`}
+              >
                 {!message.isUser && (
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center mr-2 flex-shrink-0 overflow-hidden">
-                    <Image src="/flixy.png" alt="Flixy" width={32} height={32} />
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center mr-2 flex-shrink-0 overflow-hidden" aria-hidden="true">
+                    <Image src="/flixy.png" alt="" width={32} height={32} />
                   </div>
                 )}
-                <div className={`max-w-[70%] rounded-lg p-3 ${!message.isUser ? 'bg-gray-100' : 'bg-[#31a200] text-white'}`}>
+                <div 
+                  className={`max-w-[70%] rounded-lg p-3 ${!message.isUser ? 'bg-gray-100' : 'bg-[#31a200] text-white'}`}
+                >
                   {message.text}
                 </div>
               </div>
@@ -420,11 +468,11 @@ export default function ChatInterface({ onClose }: ChatInterfaceProps) {
       {/* Input Area */}
       <div className="p-4 pt-2">
         {messages.length < 2 && (
-          <div className="text-xs text-gray-500 mb-2">
+          <div className="text-xs text-gray-500 mb-2" aria-live="polite">
             By chatting with us, you agree to the monitoring and recording of this chat to deliver our services and processing of your personal data in accordance with our Privacy Policy.
           </div>
         )}
-        <form onSubmit={handleSendMessage}>
+        <form onSubmit={handleSendMessage} aria-label="Chat message form">
           <div className="relative w-full">
             <Input
               ref={messageInputRef}
@@ -439,11 +487,14 @@ export default function ChatInterface({ onClose }: ChatInterfaceProps) {
                 }
               }}
               className="w-full pl-4 pr-16 py-5 rounded-full border border-gray-200 focus:outline-none focus:ring-1 focus:ring-gray-200"
+              aria-label="Type your message"
+              required
             />
             <Button
               className="absolute right-0 top-0 bottom-0 py-[21px] px-4 rounded-r-full"
               type="submit"
               disabled={!inputMessage.trim()}
+              aria-label="Send message"
             >
               Send
             </Button>
