@@ -48,15 +48,12 @@ export default function AgentDashboard() {
   useEffect(() => {
     if (!socket) return;
 
-    // TODO: double check listening on all conversations
     if (selectedConversation) {
-      // Subscribe agent to conversations channel
       socket.emit(AgentEvents.JOIN, { conversationId: selectedConversation });
     }
 
     // Listen for conversation updates
     socket.on(ServerEvents.CONVERSATION_UPDATED, (data: ConversationUpdatePayload) => {
-      console.log('Conversation updated:', data);
       setConversations(prevConvs => {
         const updatedConvs = prevConvs.map(conv =>
           conv.id === data.conversationId
@@ -68,7 +65,6 @@ export default function AgentDashboard() {
               }
             : conv
         );
-        console.log('Updated conversations:', updatedConvs);
         // Sort by lastMessageAt
         return [...updatedConvs].sort((a, b) => 
           new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime()
@@ -76,9 +72,7 @@ export default function AgentDashboard() {
       });
     });
 
-    // Listen for new conversations
     socket.on(ServerEvents.NEW_CONVERSATION, async (conversationId: number) => {
-      console.log('New conversation received:', conversationId);
       // Skip if we already have this conversation
       if (conversations.some(conv => conv.id === conversationId)) {
         return;
@@ -87,19 +81,13 @@ export default function AgentDashboard() {
       await fetchConversations();
     });
 
-    // Listen for resolved conversations
     socket.on(ServerEvents.CONVERSATION_RESOLVED, (data: ConversationResolvedPayload) => {
-      const resolvedId = data.conversationId;
-      // Update selected conversation if it was resolved
-      if (selectedConversation === resolvedId) {
+      if (data.conversationId === selectedConversation) {
         setSelectedConversation(null);
+        setConversations(prevConvs => 
+          prevConvs.filter(conv => conv.id !== data.conversationId)
+        );
       }
-      // Remove the resolved conversation from the list
-      setConversations(prevConvs => 
-        prevConvs.filter(conv => conv.id !== resolvedId)
-      );
-      // Notify other tabs about the resolution
-      localStorage.setItem('conversationResolved', String(resolvedId));
     });
 
     return () => {
@@ -113,10 +101,8 @@ export default function AgentDashboard() {
   useEffect(() => {
     if (!socket || !selectedConversation) return;
 
-    // Join the messages channel
     socket.emit(CustomerEvents.JOIN, { conversationId: selectedConversation });
 
-    // Listen for messages
     socket.on(ServerEvents.NEW_MESSAGE, (message: Message) => {
       // Validate incoming message
       if (!message || !message.content || !message.id || !message.conversationId) {
@@ -143,7 +129,6 @@ export default function AgentDashboard() {
     });
 
     socket.on(ServerEvents.MESSAGE_SENT, (message: Message) => {
-      // Validate confirmation message
       if (!message || !message.content || !message.id || !message.conversationId) {
         console.error('Invalid message confirmation received:', message);
         return;
@@ -168,17 +153,7 @@ export default function AgentDashboard() {
 
     socket.on(ServerEvents.ERROR, (error: ErrorEvent) => {
       console.error('Message error:', error);
-      // Handle message error (e.g., show error notification to agent)
-    });
-
-    // Listen for chat resolved
-    socket.on(ServerEvents.CHAT_RESOLVED, (data: ConversationResolvedPayload) => {
-      if (data.conversationId === selectedConversation) {
-        setSelectedConversation(null);
-        setConversations(prevConvs => 
-          prevConvs.filter(conv => conv.id !== data.conversationId)
-        );
-      }
+      // TODO: Handle message error (e.g., show error notification to agent)
     });
 
     // Focus the input field when joining a conversation
@@ -189,7 +164,6 @@ export default function AgentDashboard() {
       socket.off(ServerEvents.NEW_MESSAGE);
       socket.off(ServerEvents.MESSAGE_SENT);
       socket.off(ServerEvents.ERROR);
-      socket.off(ServerEvents.CHAT_RESOLVED);
     };
   }, [selectedConversation, socket, scrollToBottom]);
 
@@ -200,7 +174,6 @@ export default function AgentDashboard() {
       if (!session) {
         router.push('/agent/login');
       } else {
-        console.log('Session:', session);
         setAgentId(Number(session));
         fetchConversations();
       }
@@ -255,7 +228,7 @@ export default function AgentDashboard() {
       socket.emit(AgentEvents.MESSAGE, messagePayload);
     } catch (error) {
       console.error('Error sending message:', error);
-      // Optionally handle the error (e.g., show error message to agent)
+      // TODO: Handle the error (e.g., show error message to agent)
     }
 
     // Scroll to bottom after sending message

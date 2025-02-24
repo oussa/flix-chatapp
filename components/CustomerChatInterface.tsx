@@ -276,7 +276,6 @@ export default function ChatInterface({ onClose }: ChatInterfaceProps) {
 
   useEffect(() => {
     if (!isInitialized && messages.length === 0) {
-      console.log("isInitialized", isInitialized)
       // Show initial message
       addMessage(allQuestions[0], false)
       setIsInitialized(true)
@@ -306,12 +305,8 @@ export default function ChatInterface({ onClose }: ChatInterfaceProps) {
         autoConnect: false,
       });
 
-      // Setup event handlers before connecting
       socket.on('connect', () => {
-        console.log('Connected to Socket.IO server with ID:', socket.id);
-        // Join the messages channel for this conversation
         socket.emit(CustomerEvents.JOIN, { conversationId });
-        console.log('Joined messages channel:', conversationId);
       });
 
       socket.on('connect_error', (error) => {
@@ -319,9 +314,6 @@ export default function ChatInterface({ onClose }: ChatInterfaceProps) {
       });
 
       socket.on(ServerEvents.NEW_MESSAGE, (message: ServerMessage) => {
-        console.log('Received message:', message);
-        
-        // Validate incoming message
         if (!message || !message.content || !message.id) {
           console.error('Invalid message received:', message);
           return;
@@ -347,7 +339,6 @@ export default function ChatInterface({ onClose }: ChatInterfaceProps) {
       });
 
       socket.on(ServerEvents.MESSAGE_SENT, (message: ServerMessage) => {
-        // Validate confirmation message
         if (!message || !message.content || !message.id) {
           console.error('Invalid message confirmation received:', message);
           return;
@@ -384,7 +375,7 @@ export default function ChatInterface({ onClose }: ChatInterfaceProps) {
 
         // Clear the session after a short delay
         setTimeout(() => {
-          console.log('conversationResolved');
+          console.info('conversationResolved');
           localStorage.removeItem('chatSession');
           
           setConversationId(null);

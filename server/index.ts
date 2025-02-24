@@ -22,8 +22,6 @@ app.prepare().then(() => {
   const io = new Server(httpServer, { cors: { origin: "*" } });
 
   io.on("connection", (socket) => {
-    console.log(`User connected: ${socket.id}`);
-  
     socket.on(CustomerEvents.JOIN, ({ conversationId }) => {
       socket.join(conversationId);
       activeCustomers.set(socket.id, conversationId);
@@ -31,7 +29,6 @@ app.prepare().then(() => {
     });
   
     socket.on(CustomerEvents.MESSAGE, async ({ conversationId, content }) => {
-      console.log("customer:message", conversationId, content);
       const savedMessage = await saveMessage({ conversationId, content, isFromUser: true });
       io.to(conversationId).emit(ServerEvents.NEW_MESSAGE, savedMessage);
       io.emit(ServerEvents.CONVERSATION_UPDATED, { conversationId, latestMessage: content, lastMessageAt: savedMessage.createdAt, isRead: false });
@@ -43,14 +40,12 @@ app.prepare().then(() => {
     });
   
     socket.on(AgentEvents.MESSAGE, async ({ conversationId, content }) => {
-      console.log("agent:message", conversationId, content);
       const savedMessage = await saveMessage({ conversationId, content, isFromUser: false });
       io.to(conversationId).emit(ServerEvents.NEW_MESSAGE, savedMessage);
       io.emit(ServerEvents.CONVERSATION_UPDATED, { conversationId, latestMessage: content, lastMessageAt: savedMessage.createdAt, isRead: true });
     });
   
     socket.on(AgentEvents.RESOLVE_CONVERSATION, async (conversationId) => {
-      console.log("agent:resolveConversation", conversationId);
       await resolveConversation(conversationId);
       io.to(conversationId).emit(ServerEvents.CONVERSATION_RESOLVED, { conversationId });
       io.socketsLeave(conversationId);
