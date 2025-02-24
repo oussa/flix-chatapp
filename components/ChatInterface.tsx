@@ -6,8 +6,20 @@ import { Input } from "@/components/ui/input"
 import { X } from "lucide-react"
 import Image from "next/image"
 import { v4 as uuidv4 } from 'uuid'
-import { io, Socket } from 'socket.io-client'
-import type { ServerToClientEvents, ClientToServerEvents } from '@/types/socket'
+import { io } from 'socket.io-client'
+import { 
+  CustomerEvents, 
+  AgentEvents, 
+  ServerEvents,
+} from '@/types/events'
+import {
+  type Message as ServerMessage,
+  type MessagePayload,
+  type TypingPayload,
+  type ConversationResolvedPayload,
+  type ErrorEvent,
+  type ClientSocket
+} from '@/types/socket';
 
 interface Message {
   id: string
@@ -30,7 +42,7 @@ interface ChatInterfaceProps {
 
 export default function ChatInterface({ onClose }: ChatInterfaceProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const socketRef = useRef<Socket<ServerToClientEvents, ClientToServerEvents>>(null)
+  const socketRef = useRef<ClientSocket | null>(null)
   const [isInitialized, setIsInitialized] = useState(false)
   const [messages, setMessages] = useState<Message[]>([])
   const [inputMessage, setInputMessage] = useState("")
@@ -151,11 +163,11 @@ export default function ChatInterface({ onClose }: ChatInterfaceProps) {
       setMessages(prev => [...prev, newMessage]);
 
       // Send through socket
-      socketRef.current.emit('send-message', {
+      socketRef.current.emit(CustomerEvents.MESSAGE, {
         conversationId,
         content: messageText,
         isFromUser: true
-      });
+      } as MessagePayload);
 
       setTimeout(scrollToBottom, 100);
     } else {
@@ -282,7 +294,7 @@ export default function ChatInterface({ onClose }: ChatInterfaceProps) {
       socket.on('connect', () => {
         console.log('Connected to Socket.IO server with ID:', socket.id);
         // Join the messages channel for this conversation
-        socket.emit('join-conversation', conversationId);
+        socket.emit(CustomerEvents.JOIN, conversationId);
         console.log('Joined messages channel:', conversationId);
       });
 
@@ -290,12 +302,12 @@ export default function ChatInterface({ onClose }: ChatInterfaceProps) {
         console.error('Socket.IO connection error:', error);
       });
 
-      socket.on('message', (message) => {
+      socket.on(ServerEvents.NEW_MESSAGE, (message: ServerMessage) => {
         console.log('Received message:', message);
         
         setMessages(prev => {
           // Skip if we already have this message
-          if (prev.some(m => m.id === message.id.toString() || 
+          if (prev.some(m => m.id === String(message.id) || 
               (m.id.startsWith('temp-') && m.text === message.content))) {
             return prev;
           }
@@ -309,7 +321,7 @@ export default function ChatInterface({ onClose }: ChatInterfaceProps) {
             return prev.map(m => 
               m.id.startsWith('temp-') && m.text === message.content
                 ? {
-                    id: message.id.toString(),
+                    id: String(message.id),
                     text: message.content,
                     isUser: message.isFromUser,
                     timestamp: new Date(message.createdAt).getTime()
@@ -320,7 +332,7 @@ export default function ChatInterface({ onClose }: ChatInterfaceProps) {
           
           // Add new message
           return [...prev, {
-            id: message.id.toString(),
+            id: String(message.id),
             text: message.content,
             isUser: message.isFromUser,
             timestamp: new Date(message.createdAt).getTime()
@@ -330,13 +342,13 @@ export default function ChatInterface({ onClose }: ChatInterfaceProps) {
         setTimeout(scrollToBottom, 100);
       });
 
-      socket.on('message-error', (error) => {
+      socket.on(ServerEvents.ERROR, (error: ErrorEvent) => {
         console.error('Message error:', error);
         setMessages(prev => prev.filter(m => !m.id.startsWith('temp-')));
       });
 
       // Listen for chat resolved
-      socket.on('chat-resolved', (data) => {
+      socket.on(ServerEvents.CHAT_RESOLVED, (data: ConversationResolvedPayload) => {
         console.log('Chat resolved:', data);
         
         // Add the resolution message
@@ -351,7 +363,7 @@ export default function ChatInterface({ onClose }: ChatInterfaceProps) {
         setTimeout(() => {
           localStorage.removeItem('chatSession');
           // Notify other tabs that this conversation was resolved
-          localStorage.setItem('conversationResolved', data.id.toString());
+          localStorage.setItem('conversationResolved', String(data.id));
           
           setConversationId(null);
           setUserInfo(null);
@@ -376,7 +388,7 @@ export default function ChatInterface({ onClose }: ChatInterfaceProps) {
       return () => {
         console.log('Cleaning up socket connection');
         if (socket.connected) {
-          socket.emit('leave-conversation', conversationId);
+          socket.emit(CustomerEvents.DISCONNECT, conversationId);
           socket.removeAllListeners();
           socket.disconnect();
         }

@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "concurrently \"next dev --turbopack\" \"npx tsx watch server.ts\"",
+    "dev": "concurrently \"next dev --turbopack\" \"npx tsx watch server/index.ts\"",
     "build": "next build",
     "start": "concurrently \"next start\" \"NODE_ENV=production node server.js\"",
     "lint": "next lint",
