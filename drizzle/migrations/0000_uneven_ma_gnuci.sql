@@ -13,6 +13,9 @@ CREATE TABLE "conversations" (
 	"last_name" text NOT NULL,
 	"booking_id" text,
 	"status" text DEFAULT 'open' NOT NULL,
+	"is_read" boolean DEFAULT false NOT NULL,
+	"assigned_agent_id" integer,
+	"last_message_at" timestamp DEFAULT now(),
 	"created_at" timestamp DEFAULT now(),
 	"updated_at" timestamp DEFAULT now()
 );
@@ -32,10 +35,13 @@ CREATE TABLE "messages" (
 	"conversation_id" integer,
 	"content" text NOT NULL,
 	"is_from_user" boolean NOT NULL,
+	"agent_id" integer,
 	"created_at" timestamp DEFAULT now()
 );
 --> statement-breakpoint
-ALTER TABLE "messages" ADD CONSTRAINT "messages_conversation_id_conversations_id_fk" FOREIGN KEY ("conversation_id") REFERENCES "public"."conversations"("id") ON DELETE no action ON UPDATE no action;
+ALTER TABLE "conversations" ADD CONSTRAINT "conversations_assigned_agent_id_agents_id_fk" FOREIGN KEY ("assigned_agent_id") REFERENCES "public"."agents"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "messages" ADD CONSTRAINT "messages_conversation_id_conversations_id_fk" FOREIGN KEY ("conversation_id") REFERENCES "public"."conversations"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "messages" ADD CONSTRAINT "messages_agent_id_agents_id_fk" FOREIGN KEY ("agent_id") REFERENCES "public"."agents"("id") ON DELETE no action ON UPDATE no action;
 
 -- Insert initial help topics
 INSERT INTO "help_topics" (title, icon, link, sort_order) VALUES

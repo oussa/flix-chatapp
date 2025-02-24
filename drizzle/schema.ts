@@ -1,18 +1,15 @@
 import { pgTable, serial, text, timestamp, boolean, integer, varchar } from 'drizzle-orm/pg-core';
 
-export const users = pgTable('users', {
+export const conversations = pgTable('conversations', {
   id: serial('id').primaryKey(),
   email: text('email').notNull(),
   firstName: text('first_name').notNull(),
   lastName: text('last_name').notNull(),
   bookingId: text('booking_id'),
-  createdAt: timestamp('created_at').defaultNow(),
-});
-
-export const conversations = pgTable('conversations', {
-  id: serial('id').primaryKey(),
-  userId: integer('user_id').references(() => users.id),
   status: text('status').notNull().default('open'), // open, closed
+  isRead: boolean('is_read').notNull().default(false),
+  assignedAgentId: integer('assigned_agent_id').references(() => agents.id),
+  lastMessageAt: timestamp('last_message_at').defaultNow(),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });
@@ -22,6 +19,7 @@ export const messages = pgTable('messages', {
   conversationId: integer('conversation_id').references(() => conversations.id),
   content: text('content').notNull(),
   isFromUser: boolean('is_from_user').notNull(),
+  agentId: integer('agent_id').references(() => agents.id),
   createdAt: timestamp('created_at').defaultNow(),
 });
 
@@ -33,20 +31,12 @@ export const agents = pgTable('agents', {
   createdAt: timestamp('created_at').defaultNow(),
 });
 
-export const faqArticles = pgTable('faq_articles', {
-  id: serial('id').primaryKey(),
-  title: text('title').notNull(),
-  content: text('content').notNull(),
-  createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at').defaultNow(),
-});
-
 export const helpTopics = pgTable('help_topics', {
   id: serial('id').primaryKey(),
   title: varchar('title', { length: 255 }).notNull(),
   icon: varchar('icon', { length: 50 }).notNull(), // Store icon name from lucide-react
   link: varchar('link', { length: 255 }).notNull(),
   sortOrder: serial('sort_order').notNull(), // To maintain custom ordering
-  createdAt: text('created_at').notNull().default(new Date().toISOString()),
-  updatedAt: text('updated_at').notNull().default(new Date().toISOString()),
-}); 
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});

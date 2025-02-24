@@ -1,32 +1,153 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import UserAvatar from '@/components/UserAvatar';
 import ConfirmationDialog from '@/components/ConfirmationDialog';
 import { logout, getSession } from '@/app/actions/auth';
-
-interface Conversation {
-  id: number;
-  user: {
-    firstName: string;
-    lastName: string;
-    email: string;
-    bookingId?: string;
-  };
-  status: 'open' | 'closed';
-  unread: boolean;
-  lastMessage: string;
-  updatedAt: string;
-}
+import { useSocket } from '@/lib/socket';
+import type { 
+  ServerToClientEvents, 
+  ClientToServerEvents,
+  Message,
+  Conversation,
+  ConversationUpdate,
+  ConversationResolved
+} from '@/types/socket';
 
 export default function AgentDashboard() {
   const router = useRouter();
+  const socket = useSocket();
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messageInputRef = useRef<HTMLInputElement>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<number | null>(null);
   const [message, setMessage] = useState('');
   const [isConfirmationOpen, setIsConfirmationOpen] = useState(false);
+  const [agentId, setAgentId] = useState<number | null>(null);
+
+  const scrollToBottom = useCallback(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, []);
+
+  // Add effect to scroll when messages change or conversation is selected
+  useEffect(() => {
+    if (selectedConversation) {
+      scrollToBottom();
+    }
+  }, [selectedConversation, scrollToBottom]);
+
+  // Socket.IO event listeners
+  useEffect(() => {
+    if (!socket) return;
+
+    // Subscribe to conversations channel
+    socket.emit('subscribe-agent');
+
+    // Listen for conversation updates
+    socket.on('conversation-updated', (data) => {
+      console.log('Conversation updated:', data);
+      setConversations(prevConvs => {
+        const updatedConvs = prevConvs.map(conv =>
+          conv.id === data.id
+            ? {
+                ...conv,
+                lastMessageAt: data.lastMessageAt,
+                isRead: data.isRead
+              }
+            : conv
+        );
+        // Sort by lastMessageAt
+        return [...updatedConvs].sort((a, b) => 
+          new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime()
+        );
+      });
+    });
+
+    // Listen for new conversations
+    socket.on('new-conversation', (conversation) => {
+      console.log('New conversation received:', conversation);
+      setConversations(prevConvs => {
+        // Skip if we already have this conversation
+        if (prevConvs.some(conv => conv.id === conversation.id)) {
+          return prevConvs;
+        }
+        // Add new conversation and sort by lastMessageAt
+        return [conversation, ...prevConvs].sort((a, b) => 
+          new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime()
+        );
+      });
+    });
+
+    // Listen for resolved conversations
+    socket.on('conversation-resolved', (data) => {
+      const resolvedId = data.id;
+      // Update selected conversation if it was resolved
+      if (selectedConversation === resolvedId) {
+        setSelectedConversation(null);
+      }
+      // Remove the resolved conversation from the list
+      setConversations(prevConvs => 
+        prevConvs.filter(conv => conv.id !== resolvedId)
+      );
+      // Notify other tabs about the resolution
+      localStorage.setItem('conversationResolved', resolvedId.toString());
+    });
+
+    return () => {
+      socket.off('conversation-updated');
+      socket.off('new-conversation');
+      socket.off('conversation-resolved');
+    };
+  }, [socket, selectedConversation]);
+
+  // Join conversation messages channel when selected
+  useEffect(() => {
+    if (!socket || !selectedConversation) return;
+
+    // Join the messages channel
+    socket.emit('join-conversation', selectedConversation);
+
+    // Listen for messages
+    socket.on('message', (message) => {
+      setConversations(prevConvs =>
+        prevConvs.map(conv =>
+          conv.id === message.conversationId
+            ? {
+                ...conv,
+                messages: [...conv.messages, message],
+                lastMessageAt: message.createdAt,
+                // Only mark as unread if message is from user
+                isRead: !message.isFromUser
+              }
+            : conv
+        )
+      );
+      if (selectedConversation === message.conversationId) {
+        setTimeout(scrollToBottom, 100);
+      }
+    });
+
+    // Listen for chat resolved
+    socket.on('chat-resolved', (data) => {
+      if (data.id === selectedConversation) {
+        setSelectedConversation(null);
+        setConversations(prevConvs => 
+          prevConvs.filter(conv => conv.id !== data.id)
+        );
+      }
+    });
+
+    // Focus the input field when joining a conversation
+    messageInputRef.current?.focus();
+
+    return () => {
+      socket.emit('leave-conversation', selectedConversation);
+      socket.off('message');
+      socket.off('chat-resolved');
+    };
+  }, [selectedConversation, socket, scrollToBottom]);
 
   useEffect(() => {
     // Check authentication
@@ -34,82 +155,152 @@ export default function AgentDashboard() {
       const session = await getSession();
       if (!session) {
         router.push('/agent/login');
+      } else {
+        console.log('Session:', session);
+        setAgentId(Number(session));
+        fetchConversations();
       }
     };
     checkAuth();
   }, [router]);
 
-  // Mock data for demonstration
-  useEffect(() => {
-    setConversations([
-      {
-        id: 1,
-        user: {
-          firstName: 'John',
-          lastName: 'Doe',
-          email: 'john@example.com',
-          bookingId: 'BK123',
-        },
-        status: 'open',
-        unread: true,
-        lastMessage: 'Hi, I need help with my booking',
-        updatedAt: new Date().toISOString(),
-      },
-      {
-        id: 2,
-        user: {
-          firstName: 'Alice',
-          lastName: 'Smith',
-          email: 'alice@example.com',
-        },
-        status: 'open',
-        unread: false,
-        lastMessage: 'When is my refund coming through?',
-        updatedAt: new Date().toISOString(),
-      },
-      {
-        id: 3,
-        user: {
-          firstName: 'Robert',
-          lastName: 'Johnson',
-          email: 'robert@example.com',
-          bookingId: 'BK456',
-        },
-        status: 'open',
-        unread: true,
-        lastMessage: 'Can I change my travel date?',
-        updatedAt: new Date().toISOString(),
-      },
-    ]);
-  }, []);
+  const fetchConversations = async () => {
+    try {
+      const response = await fetch('/api/agent/conversations?status=open');
+      if (response.ok) {
+        const data = await response.json();
+        // Sort conversations by lastMessageAt
+        const sortedData = data.sort((a: Conversation, b: Conversation) => 
+          new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime()
+        );
+        setConversations(sortedData);
+      }
+    } catch (error) {
+      console.error('Error fetching conversations:', error);
+    }
+  };
 
-  const handleSendMessage = (e: React.FormEvent) => {
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Here you would typically send the message to your backend
+    if (!message.trim() || !selectedConversation || !agentId || !socket) return;
+
+    // Send message through Socket.IO
+    socket.emit('send-message', {
+      conversationId: selectedConversation,
+      content: message.trim(),
+      isFromUser: false,
+      agentId
+    });
+
     setMessage('');
+    // Scroll to bottom after sending message
+    setTimeout(scrollToBottom, 100);
   };
 
   const handleConversationSelect = (convId: number) => {
+    if (selectedConversation && socket) {
+      socket.emit('leave-conversation', selectedConversation);
+    }
+    
     setSelectedConversation(convId);
-    // Mark conversation as read when selected
-    setConversations(prevConvs =>
-      prevConvs.map(conv =>
-        conv.id === convId ? { ...conv, unread: false } : conv
-      )
-    );
+    if (!agentId) return;
+
+    const conversation = conversations.find(c => c.id === convId);
+    if (!conversation?.isRead) {
+      markConversationAsRead(convId);
+    }
+
+    if (!conversation?.assignedAgentId) {
+      assignConversationToAgent(convId);
+    }
+
+    socket.emit('join-conversation', convId);
   };
 
-  const handleResolveIssue = () => {
-    if (selectedConversation) {
+  const markConversationAsRead = async (convId: number) => {
+    try {
+      await fetch('/api/agent/conversations', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'markAsRead',
+          conversationId: convId,
+        }),
+      });
+
       setConversations(prevConvs =>
         prevConvs.map(conv =>
-          conv.id === selectedConversation
-            ? { ...conv, status: 'closed' }
+          conv.id === convId
+            ? { ...conv, isRead: true }
             : conv
         )
       );
-      setSelectedConversation(null);
+    } catch (error) {
+      console.error('Error marking conversation as read:', error);
+    }
+  };
+
+  const assignConversationToAgent = async (convId: number) => {
+    try {
+      await fetch('/api/agent/conversations', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'assign',
+          conversationId: convId,
+          agentId,
+        }),
+      });
+
+      setConversations(prevConvs =>
+        prevConvs.map(conv =>
+          conv.id === convId
+            ? { ...conv, assignedAgentId: agentId }
+            : conv
+        )
+      );
+    } catch (error) {
+      console.error('Error assigning conversation:', error);
+    }
+  };
+
+  // Handle localStorage events for conversation resolution
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'conversationResolved' && e.newValue) {
+        const resolvedId = Number(e.newValue);
+        if (!isNaN(resolvedId)) {
+          // Update selected conversation if it was resolved
+          if (selectedConversation === resolvedId) {
+            setSelectedConversation(null);
+          }
+          // Remove the resolved conversation from the list
+          setConversations(prevConvs => 
+            prevConvs.filter(conv => conv.id !== resolvedId)
+          );
+          // Remove from localStorage to prevent duplicate handling
+          localStorage.removeItem('conversationResolved');
+        }
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, [selectedConversation]);
+
+  // Handle conversation resolution
+  const handleResolveIssue = async () => {
+    if (!selectedConversation || !socket) return;
+
+    try {
+      socket.emit('resolve-conversation', selectedConversation);
       setIsConfirmationOpen(false);
+    } catch (error) {
+      console.error('Error resolving conversation:', error);
     }
   };
 
@@ -136,42 +327,61 @@ export default function AgentDashboard() {
       <main className="container mx-auto px-4 py-8">
         <div className="grid grid-cols-12 gap-8">
           {/* Conversations List */}
-          <div className="col-span-4 bg-white rounded-lg shadow">
+          <div className="col-span-4 bg-white rounded-lg shadow flex flex-col h-[calc(100vh-200px)]">
             <div className="p-4 border-b">
-              <h2 className="text-lg font-semibold">Open Conversations</h2>
+              <h2 className="text-lg font-semibold text-gray-900">Open Conversations</h2>
+              <p className="text-sm text-gray-500 mt-1">{conversations.length} active chats</p>
             </div>
-            <div className="divide-y">
-              {conversations.map((conv) => (
-                <button
-                  key={conv.id}
-                  className={`w-full p-4 text-left hover:bg-gray-50 ${
-                    selectedConversation === conv.id ? 'bg-gray-50' : ''
-                  } ${conv.unread ? 'bg-green-50/50' : ''}`}
-                  onClick={() => handleConversationSelect(conv.id)}
-                >
-                  <div className="flex items-start space-x-4">
-                    <div className="relative">
-                      <UserAvatar firstName={conv.user.firstName} lastName={conv.user.lastName} size="md" />
-                      {conv.unread && (
-                        <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white" />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex justify-between items-start mb-1">
-                        <span className={`font-medium truncate ${conv.unread ? 'text-green-700' : ''}`}>
-                          {conv.user.firstName} {conv.user.lastName}
-                        </span>
-                        <span className={`text-sm ${conv.unread ? 'text-green-600 font-medium' : 'text-gray-500'} flex-shrink-0`}>
-                          {new Date(conv.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </span>
+            <div className="overflow-y-auto flex-1">
+              <div className="divide-y">
+                {conversations.map((conv) => (
+                  <button
+                    key={conv.id}
+                    className={`w-full p-4 text-left hover:bg-gray-50 transition-colors duration-150 ${
+                      selectedConversation === conv.id ? 'bg-gray-50' : ''
+                    } ${!conv.isRead ? 'bg-green-50/50' : ''}`}
+                    onClick={() => handleConversationSelect(Number(conv.id))}
+                  >
+                    <div className="flex items-start space-x-4">
+                      <div className="relative flex-shrink-0">
+                        <UserAvatar firstName={conv.firstName} lastName={conv.lastName} size="md" />
+                        {!conv.isRead && (
+                          <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white" />
+                        )}
                       </div>
-                      <div className={`text-sm truncate ${conv.unread ? 'text-green-600 font-medium' : 'text-gray-600'}`}>
-                        {conv.lastMessage}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex justify-between items-start mb-1">
+                          <span className={`font-medium truncate ${!conv.isRead ? 'text-green-700' : 'text-gray-900'}`}>
+                            {conv.firstName} {conv.lastName}
+                          </span>
+                          <span className={`text-xs ${!conv.isRead ? 'text-green-600 font-medium' : 'text-gray-500'} flex-shrink-0`}>
+                            {new Date(conv.lastMessageAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xs text-gray-500 truncate">
+                            {conv.email}
+                          </span>
+                        </div>
+                        <div className={`text-sm truncate ${!conv.isRead ? 'text-green-600 font-medium' : 'text-gray-600'}`}>
+                          {conv.messages[conv.messages.length - 1]?.content || 'No messages'}
+                        </div>
                       </div>
                     </div>
+                  </button>
+                ))}
+              </div>
+              {conversations.length === 0 && (
+                <div className="flex flex-col items-center justify-center h-full text-center p-4">
+                  <div className="text-gray-400 mb-2">
+                    <svg className="w-12 h-12 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                    </svg>
                   </div>
-                </button>
-              ))}
+                  <p className="text-gray-600 font-medium">No active conversations</p>
+                  <p className="text-sm text-gray-500">New customer chats will appear here</p>
+                </div>
+              )}
             </div>
           </div>
 
@@ -182,46 +392,88 @@ export default function AgentDashboard() {
                 <div className="p-4 border-b">
                   <div className="flex items-center justify-between w-full">
                     <div className="flex items-center space-x-4">
-                      <UserAvatar 
-                        firstName={conversations.find(c => c.id === selectedConversation)?.user.firstName || ''} 
-                        lastName={conversations.find(c => c.id === selectedConversation)?.user.lastName || ''} 
-                        size="lg"
-                      />
-                      <div>
-                        <h2 className="font-semibold">
-                          {conversations.find((c) => c.id === selectedConversation)?.user.firstName}{' '}
-                          {conversations.find((c) => c.id === selectedConversation)?.user.lastName}
-                        </h2>
-                        <p className="text-sm text-gray-600">
-                          {conversations.find((c) => c.id === selectedConversation)?.user.email}
-                        </p>
-                      </div>
+                      {conversations.find(c => c.id === selectedConversation) && (
+                        <>
+                          <UserAvatar 
+                            firstName={conversations.find(c => c.id === selectedConversation)!.firstName}
+                            lastName={conversations.find(c => c.id === selectedConversation)!.lastName}
+                            size="lg"
+                          />
+                          <div>
+                            <h2 className="font-semibold">
+                              {conversations.find(c => c.id === selectedConversation)!.firstName}{' '}
+                              {conversations.find(c => c.id === selectedConversation)!.lastName}
+                            </h2>
+                            <p className="text-sm text-gray-600">
+                              {conversations.find(c => c.id === selectedConversation)!.email}
+                            </p>
+                            {conversations.find(c => c.id === selectedConversation)?.bookingId && (
+                              <p className="text-sm text-gray-600">
+                                Booking ID: {conversations.find(c => c.id === selectedConversation)!.bookingId}
+                              </p>
+                            )}
+                          </div>
+                        </>
+                      )}
                     </div>
                     <Button 
                       variant="outline"
                       onClick={() => setIsConfirmationOpen(true)}
-                      className="bg-[#31a200] text-white hover:bg-[#31a200]/90 border-0"
                     >
                       Mark Issue as Resolved
                     </Button>
                   </div>
                 </div>
 
-                <div className="h-[calc(100vh-400px)] overflow-y-auto p-4">
-                  {/* Chat messages would go here */}
+                <div className="h-[calc(100vh-400px)] overflow-y-auto p-4 space-y-4">
+                  {conversations.find(c => c.id === selectedConversation)?.messages.map((msg) => (
+                    <div
+                      key={msg.id}
+                      className={`flex ${msg.isFromUser ? 'justify-start' : 'justify-end'}`}
+                    >
+                      <div
+                        className={`max-w-[70%] rounded-lg p-3 ${
+                          msg.isFromUser
+                            ? 'bg-gray-100'
+                            : 'bg-[#31a200] text-white'
+                        }`}
+                      >
+                        <p>{msg.content}</p>
+                        <p className="text-xs mt-1 opacity-70">
+                          {new Date(msg.createdAt).toLocaleTimeString([], {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                  <div ref={messagesEndRef} />
                 </div>
 
                 <div className="p-4 border-t">
                   <form onSubmit={handleSendMessage}>
                     <div className="flex gap-2">
                       <input
+                        ref={messageInputRef}
                         type="text"
                         value={message}
                         onChange={(e) => setMessage(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            handleSendMessage(e);
+                          }
+                        }}
                         className="flex-1 border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#31a200]"
                         placeholder="Type your message..."
                       />
-                      <Button type="submit">Send</Button>
+                      <Button 
+                        type="submit"
+                        disabled={!message.trim()}
+                      >
+                        Send
+                      </Button>
                     </div>
                   </form>
                 </div>

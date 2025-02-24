@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input"
 import { X } from "lucide-react"
 import Image from "next/image"
 import { v4 as uuidv4 } from 'uuid'
+import { io, Socket } from 'socket.io-client'
+import type { ServerToClientEvents, ClientToServerEvents } from '@/types/socket'
 
 interface Message {
   id: string
@@ -28,6 +30,7 @@ interface ChatInterfaceProps {
 
 export default function ChatInterface({ onClose }: ChatInterfaceProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const socketRef = useRef<Socket<ServerToClientEvents, ClientToServerEvents>>(null)
   const [isInitialized, setIsInitialized] = useState(false)
   const [messages, setMessages] = useState<Message[]>([])
   const [inputMessage, setInputMessage] = useState("")
@@ -35,6 +38,7 @@ export default function ChatInterface({ onClose }: ChatInterfaceProps) {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
   const [isWaitingForAgent, setIsWaitingForAgent] = useState(false)
   const [showPrivacyNotice, setShowPrivacyNotice] = useState(true)
+  const [conversationId, setConversationId] = useState<number | null>(null)
 
   const allQuestions = [
     "Hello, I'm Flixy your AI agent. How can I help you today?",
@@ -47,6 +51,75 @@ export default function ChatInterface({ onClose }: ChatInterfaceProps) {
     "You've been added to the queue. An agent will be with you shortly."
   ]
 
+  // Load session from localStorage on mount
+  useEffect(() => {
+    const savedSession = localStorage.getItem('chatSession');
+    if (savedSession) {
+      const session = JSON.parse(savedSession);
+      if (session.conversationId) {
+        setConversationId(session.conversationId);
+        setUserInfo(session.userInfo);
+        setIsWaitingForAgent(true);
+        setCurrentQuestionIndex(6);
+        
+        // Fetch conversation history
+        fetchConversationHistory(session.conversationId);
+      }
+    }
+  }, []);
+
+  // Save session to localStorage when it changes
+  useEffect(() => {
+    if (conversationId && userInfo) {
+      localStorage.setItem('chatSession', JSON.stringify({
+        conversationId,
+        userInfo,
+        timestamp: Date.now()
+      }));
+    }
+  }, [conversationId, userInfo]);
+
+  // Fetch conversation history
+  const fetchConversationHistory = async (convId: number) => {
+    try {
+      const response = await fetch(`/api/customer/messages?conversationId=${convId}`);
+      if (response.ok) {
+        const data = await response.json();
+        // Convert messages from API format to our format
+        const formattedMessages = data.messages.map((msg: any) => ({
+          id: msg.id.toString(),
+          text: msg.content,
+          isUser: msg.isFromUser,
+          timestamp: new Date(msg.createdAt).getTime()
+        }));
+        setMessages(formattedMessages);
+      }
+    } catch (error) {
+      console.error('Error fetching conversation history:', error);
+    }
+  };
+
+  // Clear session when conversation is resolved
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'conversationResolved') {
+        const resolvedId = e.newValue ? parseInt(e.newValue) : null;
+        if (resolvedId === conversationId) {
+          localStorage.removeItem('chatSession');
+          setConversationId(null);
+          setUserInfo(null);
+          setIsWaitingForAgent(false);
+          setCurrentQuestionIndex(0);
+          setMessages([]);
+          setIsInitialized(false);
+        }
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, [conversationId]);
+
   const addMessage = useCallback((text: string, isUser: boolean) => {
     const newMessage: Message = {
       id: uuidv4(),
@@ -57,69 +130,98 @@ export default function ChatInterface({ onClose }: ChatInterfaceProps) {
     setMessages(prev => [...prev, newMessage])
   }, [])
 
-  const handleSendMessage = () => {
-    if (!inputMessage.trim()) return
+  const handleSendMessage = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!inputMessage.trim()) return;
 
-    // Add user's message
-    addMessage(inputMessage, true)
-    
-    // Process the user's response based on current question
-    switch (currentQuestionIndex) {
-      case 0: // Initial greeting
-        setCurrentQuestionIndex(1)
-        setTimeout(() => addMessage(allQuestions[1], false), 1000)
-        setTimeout(() => {
-          addMessage(allQuestions[2], false)
-          setCurrentQuestionIndex(2)
-        }, 2000)
-        break
-      case 2: // Email
-        if (inputMessage.includes('@')) {
-          setUserInfo({
-            email: inputMessage,
-            firstName: '',
-            lastName: '',
-          })
-          setCurrentQuestionIndex(3)
-          setTimeout(() => addMessage(allQuestions[3], false), 1000)
-        } else {
-          setTimeout(() => addMessage("Please enter a valid email address.", false), 1000)
-        }
-        break
-      case 3: // First name
-        setUserInfo(prev => prev ? {
-          ...prev,
-          firstName: inputMessage
-        } : null)
-        setCurrentQuestionIndex(4)
-        setTimeout(() => addMessage(allQuestions[4], false), 1000)
-        break
-      case 4: // Last name
-        setUserInfo(prev => prev ? {
-          ...prev,
-          lastName: inputMessage
-        } : null)
-        setCurrentQuestionIndex(5)
-        setTimeout(() => addMessage(allQuestions[5], false), 1000)
-        break
-      case 5: // Booking ID
-        setUserInfo(prev => prev ? {
-          ...prev,
-          bookingId: inputMessage.toLowerCase() === 'no' ? undefined : inputMessage
-        } : null)
-        setCurrentQuestionIndex(6)
-        setIsWaitingForAgent(true)
-        setTimeout(() => {
-          addMessage(allQuestions[6], false)
-        }, 1000)
-        setTimeout(() => {
-          addMessage(allQuestions[7], false)
-          addToQueue()
-        }, 1000)
-        break
+    const messageText = inputMessage.trim();
+    setInputMessage("");
+
+    if (isWaitingForAgent && conversationId && socketRef.current) {
+      // Generate a temporary ID for optimistic update
+      const tempId = `temp-${uuidv4()}`;
+      
+      // Add message optimistically
+      const newMessage = {
+        id: tempId,
+        text: messageText,
+        isUser: true,
+        timestamp: Date.now()
+      };
+      setMessages(prev => [...prev, newMessage]);
+
+      // Send through socket
+      socketRef.current.emit('send-message', {
+        conversationId,
+        content: messageText,
+        isFromUser: true
+      });
+
+      setTimeout(scrollToBottom, 100);
+    } else {
+      // Process the user's response based on current question
+      switch (currentQuestionIndex) {
+        case 0: // Initial greeting
+          addMessage(messageText, true);
+          setCurrentQuestionIndex(1);
+          setTimeout(() => addMessage(allQuestions[1], false), 1000);
+          setTimeout(() => {
+            addMessage(allQuestions[2], false);
+            setCurrentQuestionIndex(2);
+          }, 2000);
+          break;
+        case 2: // Email
+          addMessage(messageText, true);
+          if (messageText.includes('@')) {
+            setUserInfo({
+              email: messageText,
+              firstName: '',
+              lastName: '',
+            });
+            setCurrentQuestionIndex(3);
+            setTimeout(() => addMessage(allQuestions[3], false), 1000);
+          } else {
+            setTimeout(() => addMessage("Please enter a valid email address.", false), 1000);
+          }
+          break;
+        case 3: // First name
+          addMessage(messageText, true);
+          setUserInfo(prev => prev ? {
+            ...prev,
+            firstName: messageText
+          } : null);
+          setCurrentQuestionIndex(4);
+          setTimeout(() => addMessage(allQuestions[4], false), 1000);
+          break;
+        case 4: // Last name
+          addMessage(messageText, true);
+          setUserInfo(prev => prev ? {
+            ...prev,
+            lastName: messageText
+          } : null);
+          setCurrentQuestionIndex(5);
+          setTimeout(() => addMessage(allQuestions[5], false), 1000);
+          break;
+        case 5: // Booking ID
+          addMessage(messageText, true);
+          setUserInfo(prev => prev ? {
+            ...prev,
+            bookingId: messageText.toLowerCase() === 'no' ? undefined : messageText
+          } : null);
+          setCurrentQuestionIndex(6);
+          setIsWaitingForAgent(true);
+          setTimeout(() => {
+            addMessage(allQuestions[6], false);
+          }, 1000);
+          setTimeout(() => {
+            addMessage(allQuestions[7], false);
+            addToQueue();
+          }, 2000);
+          break;
+      }
     }
 
-    setInputMessage("")
+    setTimeout(scrollToBottom, 100);
   }
 
   const addToQueue = async () => {
@@ -132,13 +234,11 @@ export default function ChatInterface({ onClose }: ChatInterfaceProps) {
         body: JSON.stringify({ userInfo, messages }),
       })
       if (response.ok) {
-        // await addMessage(allQuestions[7], false)
-      } else {
-        // await addMessage("There was an error adding you to the queue. Please try again later.", false)
+        const data = await response.json();
+        setConversationId(data.conversationId);
       }
     } catch (error) {
       console.error("Error adding to queue:", error)
-      // await addMessage("There was an error connecting to our service. Please try again later.", false)
     }
   }
 
@@ -158,6 +258,132 @@ export default function ChatInterface({ onClose }: ChatInterfaceProps) {
   useEffect(() => {
     scrollToBottom()
   }, [messages, scrollToBottom])
+
+  // Initialize socket connection when waiting for agent
+  useEffect(() => {
+    if (isWaitingForAgent && conversationId) {
+      // Cleanup any existing socket
+      if (socketRef.current) {
+        const existingSocket = socketRef.current;
+        if (existingSocket.connected) {
+          existingSocket.disconnect();
+        }
+        socketRef.current = null;
+      }
+
+      // Initialize Socket.IO connection
+      const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3001', {
+        path: '/socket.io',
+        transports: ['websocket', 'polling'],
+        autoConnect: false, // Don't connect automatically
+      });
+
+      // Setup event handlers before connecting
+      socket.on('connect', () => {
+        console.log('Connected to Socket.IO server with ID:', socket.id);
+        // Join the messages channel for this conversation
+        socket.emit('join-conversation', conversationId);
+        console.log('Joined messages channel:', conversationId);
+      });
+
+      socket.on('connect_error', (error) => {
+        console.error('Socket.IO connection error:', error);
+      });
+
+      socket.on('message', (message) => {
+        console.log('Received message:', message);
+        
+        setMessages(prev => {
+          // Skip if we already have this message
+          if (prev.some(m => m.id === message.id.toString() || 
+              (m.id.startsWith('temp-') && m.text === message.content))) {
+            return prev;
+          }
+          
+          // Replace temporary message if it exists
+          const hasTempMessage = prev.some(m => 
+            m.id.startsWith('temp-') && m.text === message.content
+          );
+          
+          if (hasTempMessage) {
+            return prev.map(m => 
+              m.id.startsWith('temp-') && m.text === message.content
+                ? {
+                    id: message.id.toString(),
+                    text: message.content,
+                    isUser: message.isFromUser,
+                    timestamp: new Date(message.createdAt).getTime()
+                  }
+                : m
+            );
+          }
+          
+          // Add new message
+          return [...prev, {
+            id: message.id.toString(),
+            text: message.content,
+            isUser: message.isFromUser,
+            timestamp: new Date(message.createdAt).getTime()
+          }];
+        });
+        
+        setTimeout(scrollToBottom, 100);
+      });
+
+      socket.on('message-error', (error) => {
+        console.error('Message error:', error);
+        setMessages(prev => prev.filter(m => !m.id.startsWith('temp-')));
+      });
+
+      // Listen for chat resolved
+      socket.on('chat-resolved', (data) => {
+        console.log('Chat resolved:', data);
+        
+        // Add the resolution message
+        setMessages(prev => [...prev, {
+          id: `resolution-${Date.now()}`,
+          text: "This conversation has been marked as resolved by the agent. Thank you for using our service.",
+          isUser: false,
+          timestamp: Date.now()
+        }]);
+
+        // Clear the session after a short delay to allow reading the message
+        setTimeout(() => {
+          localStorage.removeItem('chatSession');
+          // Notify other tabs that this conversation was resolved
+          localStorage.setItem('conversationResolved', data.id.toString());
+          
+          setConversationId(null);
+          setUserInfo(null);
+          setIsWaitingForAgent(false);
+          setCurrentQuestionIndex(0);
+          setIsInitialized(false);
+          
+          // Clear messages after a delay to allow reading the resolution message
+          setTimeout(() => {
+            setMessages([]);
+          }, 5000);
+        }, 1000);
+      });
+
+      // Store socket reference before connecting
+      socketRef.current = socket;
+
+      // Connect after all handlers are set up
+      socket.connect();
+
+      // Cleanup function
+      return () => {
+        console.log('Cleaning up socket connection');
+        if (socket.connected) {
+          socket.emit('leave-conversation', conversationId);
+          socket.removeAllListeners();
+          socket.disconnect();
+        }
+        socketRef.current = null;
+      };
+    }
+  }, [isWaitingForAgent, conversationId, scrollToBottom]);
 
   return (
     <div className="fixed inset-0 md:inset-auto md:bottom-4 md:right-4 md:w-96 md:h-[600px] bg-white rounded-none md:rounded-2xl shadow-xl flex flex-col z-50">
@@ -195,8 +421,7 @@ export default function ChatInterface({ onClose }: ChatInterfaceProps) {
                     <Image src="/flixy.png" alt="Flixy" width={32} height={32} />
                   </div>
                 )}
-                <div className={`max-w-[80%] ${message.isUser ? "bg-black text-white rounded-[20px] rounded-br-sm" : "bg-white shadow-sm rounded-[20px] rounded-tl-sm"} p-3`}>
-                  {!message.isUser && <div className="font-semibold mb-1">Flixy • AI Agent</div>}
+                <div className={`max-w-[70%] rounded-lg p-3 ${!message.isUser ? 'bg-gray-100' : 'bg-[#31a200] text-white'}`}>
                   {message.text}
                 </div>
               </div>
@@ -219,7 +444,7 @@ export default function ChatInterface({ onClose }: ChatInterfaceProps) {
             placeholder="Message..."
             value={inputMessage}
             onChange={(e) => setInputMessage(e.target.value)}
-            onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
+            onKeyPress={(e) => e.key === "Enter" && handleSendMessage(e)}
             className="w-full pl-4 pr-24 py-3 rounded-full border border-gray-200 focus:outline-none focus:ring-1 focus:ring-gray-200"
           />
         </div>

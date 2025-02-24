@@ -18,7 +18,7 @@ export async function login(email: string, password: string): Promise<boolean> {
     
     if (isValid) {
       // Set session cookie
-      cookies().set('agent_session', agent[0].id.toString(), {
+      (await cookies()).set('agent_session', agent[0].id.toString(), {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
@@ -35,11 +35,11 @@ export async function login(email: string, password: string): Promise<boolean> {
 }
 
 export async function logout() {
-  cookies().delete('agent_session')
+  (await cookies()).delete('agent_session')
 }
 
 export async function getSession() {
-  const session = cookies().get('agent_session')
+  const session = (await cookies()).get('agent_session')
   return session?.value
 }
 
@@ -49,4 +49,4 @@ export async function requireAuth() {
     throw new Error('Unauthorized')
   }
   return session
-} 
+}
