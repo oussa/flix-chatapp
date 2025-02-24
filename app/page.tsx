@@ -2,10 +2,12 @@
 
 import { useState } from "react"
 import Link from "next/link"
+import { Search, X } from "lucide-react"
 import LandingPage from "@/components/LandingPage"
 import ChatButton from "@/components/ChatButton"
 import ChatInterface from "@/components/CustomerChatInterface"
-import { Search, X } from "lucide-react"
+import { SocketProvider } from '@/components/SocketProvider';
+import { Input } from '@/components/ui/input';
 
 export default function Home() {
   const [isChatOpen, setIsChatOpen] = useState(false)
@@ -27,7 +29,7 @@ export default function Home() {
             <div className="w-full max-w-3xl">
               <div className="relative">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                <input
+                <Input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -52,7 +54,11 @@ export default function Home() {
       <main>
         <LandingPage searchQuery={searchQuery} onChatOpen={() => setIsChatOpen(true)} />
         <ChatButton onClick={() => setIsChatOpen(true)} />
-        {isChatOpen && <ChatInterface onClose={() => setIsChatOpen(false)} />}
+        {isChatOpen && (
+          <SocketProvider>
+            <ChatInterface onClose={() => setIsChatOpen(false)} />
+          </SocketProvider>
+        )}
       </main>
     </div>
   )

@@ -20,6 +20,7 @@ import {
   type ClientSocket
 } from '@/types/socket';
 import type { Message, Conversation } from '@/types/socket';
+import { Input } from '@/components/ui/input';
 
 export default function AgentDashboard() {
   const router = useRouter();
@@ -498,7 +499,7 @@ export default function AgentDashboard() {
                 <div className="p-4 border-t">
                   <form onSubmit={handleSendMessage}>
                     <div className="flex gap-2">
-                      <input
+                      <Input
                         ref={messageInputRef}
                         type="text"
                         value={message}
@@ -509,10 +510,11 @@ export default function AgentDashboard() {
                             handleSendMessage(e);
                           }
                         }}
-                        className="flex-1 border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#31a200]"
+                        className="flex-1 border rounded-md px-3 py-5 focus:outline-none focus:ring-2 focus:ring-[#31a200]"
                         placeholder="Type your message..."
                       />
                       <Button
+                        className="py-5"
                         type="submit"
                         disabled={!message.trim()}
                       >

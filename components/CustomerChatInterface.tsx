@@ -5,7 +5,6 @@ import { Input } from "@/components/ui/input"
 import { X } from "lucide-react"
 import Image from "next/image"
 import { v4 as uuidv4 } from 'uuid'
-import { io } from 'socket.io-client'
 import { 
   CustomerEvents, 
   ServerEvents,
@@ -17,6 +16,8 @@ import {
   type ErrorEvent,
   type ClientSocket
 } from '@/types/socket';
+import { useSocket } from '@/lib/socket';
+import { Button } from '@/components/ui/button';
 
 interface Message {
   id: string | number
@@ -37,6 +38,7 @@ interface ChatInterfaceProps {
   onClose: () => void
 }
 
+// TODO: Move these questions and their logic to the server and simply conversation creation
 const allQuestions = [
   "Hello, I'm Flixy your AI agent. How can I help you today?",
   "To best serve you I still need some information before handing over to one of our human agents.",
@@ -49,8 +51,9 @@ const allQuestions = [
 ]
 
 export default function ChatInterface({ onClose }: ChatInterfaceProps) {
+  const socket = useSocket() as ClientSocket | null;
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const socketRef = useRef<ClientSocket | null>(null)
+  const messageInputRef = useRef<HTMLInputElement>(null);
   const [isInitialized, setIsInitialized] = useState(false)
   const [messages, setMessages] = useState<Message[]>([])
   const [inputMessage, setInputMessage] = useState("")
@@ -59,22 +62,24 @@ export default function ChatInterface({ onClose }: ChatInterfaceProps) {
   const [isWaitingForAgent, setIsWaitingForAgent] = useState(false)
   const [conversationId, setConversationId] = useState<number | null>(null)
 
-  // Load session from localStorage on mount
   useEffect(() => {
-    const savedSession = localStorage.getItem('chatSession');
-    if (savedSession) {
-      const session = JSON.parse(savedSession);
-      if (session.conversationId) {
-        setConversationId(session.conversationId);
-        setUserInfo(session.userInfo);
-        setIsWaitingForAgent(true);
-        setCurrentQuestionIndex(6);
-        
-        // Fetch conversation history
-        fetchConversationHistory(session.conversationId);
-      }
+    messageInputRef.current?.focus();
+    const convId = Number(localStorage.getItem('convId'));
+    if (convId) {
+      setConversationId(convId);
+      fetchConversationHistory(convId);
     }
   }, []);
+
+  const clearSession = () => {
+    localStorage.removeItem('convId');
+    setConversationId(null);
+    setUserInfo(null);
+    setIsWaitingForAgent(false);
+    setCurrentQuestionIndex(0);
+    setMessages([]);
+    setIsInitialized(false);
+  };
 
   // Fetch conversation history
   const fetchConversationHistory = async (convId: number) => {
@@ -92,13 +97,8 @@ export default function ChatInterface({ onClose }: ChatInterfaceProps) {
         setMessages(formattedMessages);
       } else if (response.status === 404) {
         // Conversation not found. Likely it was resolved by the agent. Clean up local state
-        localStorage.removeItem('chatSession');
-        setConversationId(null);
-        setUserInfo(null);
-        setIsWaitingForAgent(false);
-        setCurrentQuestionIndex(0);
-        setMessages([]);
-        setIsInitialized(false);
+        console.info('conversation already resolved');
+        clearSession();
       }
     } catch (error) {
       console.error('Error fetching conversation history:', error);
@@ -111,13 +111,7 @@ export default function ChatInterface({ onClose }: ChatInterfaceProps) {
       if (e.key === 'conversationResolved') {
         const resolvedId = e.newValue ? parseInt(e.newValue) : null;
         if (resolvedId === conversationId) {
-          localStorage.removeItem('chatSession');
-          setConversationId(null);
-          setUserInfo(null);
-          setIsWaitingForAgent(false);
-          setCurrentQuestionIndex(0);
-          setMessages([]);
-          setIsInitialized(false);
+          clearSession();
         }
       }
     };
@@ -148,7 +142,7 @@ export default function ChatInterface({ onClose }: ChatInterfaceProps) {
 
     setInputMessage("");
 
-    if (isWaitingForAgent && conversationId && socketRef.current) {
+    if (isWaitingForAgent && conversationId && socket) {
       // Create the message payload first to ensure it's properly structured
       const messagePayload: MessagePayload = {
         conversationId,
@@ -175,8 +169,7 @@ export default function ChatInterface({ onClose }: ChatInterfaceProps) {
       setMessages(prev => [...prev, newMessage]);
 
       try {
-        // Send through socket
-        socketRef.current.emit(CustomerEvents.MESSAGE, messagePayload);
+        socket?.emit(CustomerEvents.MESSAGE, messagePayload);
       } catch (error) {
         console.error('Error sending message:', error);
         // Remove the optimistic message if there was an error
@@ -263,6 +256,7 @@ export default function ChatInterface({ onClose }: ChatInterfaceProps) {
       if (response.ok) {
         const data = await response.json();
         setConversationId(data.conversationId);
+        localStorage.setItem('convId', data.conversationId);
       }
     } catch (error) {
       console.error("Error adding to queue:", error)
@@ -287,30 +281,13 @@ export default function ChatInterface({ onClose }: ChatInterfaceProps) {
 
   // Initialize socket connection when waiting for agent
   useEffect(() => {
+    if (!socket) {
+      console.error('Socket.IO connection not available');
+      return;
+    }
+
     if (isWaitingForAgent && conversationId) {
-      // Cleanup any existing socket
-      if (socketRef.current) {
-        const existingSocket = socketRef.current;
-        if (existingSocket.connected) {
-          existingSocket.disconnect();
-        }
-        socketRef.current = null;
-      }
-
-      // Initialize Socket.IO connection
-      const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3001', {
-        path: '/socket.io',
-        transports: ['websocket', 'polling'],
-        autoConnect: false,
-      });
-
-      socket.on('connect', () => {
-        socket.emit(CustomerEvents.JOIN, { conversationId });
-      });
-
-      socket.on('connect_error', (error) => {
-        console.error('Socket.IO connection error:', error);
-      });
+      socket.emit(CustomerEvents.JOIN, { conversationId });
 
       socket.on(ServerEvents.NEW_MESSAGE, (message: ServerMessage) => {
         if (!message || !message.content || !message.id) {
@@ -375,36 +352,24 @@ export default function ChatInterface({ onClose }: ChatInterfaceProps) {
         // Clear the session after a short delay
         setTimeout(() => {
           console.info('conversationResolved');
-          localStorage.removeItem('chatSession');
-          
-          setConversationId(null);
-          setUserInfo(null);
-          setIsWaitingForAgent(false);
-          setCurrentQuestionIndex(0);
-          setIsInitialized(false);
           
           // Clear messages after a delay
           setTimeout(() => {
-            setMessages([]);
+            clearSession();
           }, 5000);
         }, 1000);
       });
-
-      // Store socket reference and connect
-      socketRef.current = socket;
-      socket.connect();
-
-      // Cleanup function
-      return () => {
-        if (socket.connected) {
-          socket.emit(CustomerEvents.DISCONNECT, conversationId);
-          socket.removeAllListeners();
-          socket.disconnect();
-        }
-        socketRef.current = null;
-      };
     }
-  }, [isWaitingForAgent, conversationId, scrollToBottom]);
+
+    // Cleanup function
+    return () => {
+      socket.emit(CustomerEvents.DISCONNECT, conversationId);
+      socket.off(ServerEvents.NEW_MESSAGE);
+      socket.off(ServerEvents.MESSAGE_SENT);
+      socket.off(ServerEvents.CONVERSATION_RESOLVED);
+      socket.off(ServerEvents.ERROR);
+    };
+  }, [socket, isWaitingForAgent, conversationId, scrollToBottom]);
 
   return (
     <div className="fixed inset-0 md:inset-auto md:bottom-4 md:right-4 md:w-96 md:h-[600px] bg-white rounded-none md:rounded-2xl shadow-xl flex flex-col z-50">
@@ -459,16 +424,31 @@ export default function ChatInterface({ onClose }: ChatInterfaceProps) {
             By chatting with us, you agree to the monitoring and recording of this chat to deliver our services and processing of your personal data in accordance with our Privacy Policy.
           </div>
         )}
-        <div className="relative">
-          <Input
-            type="text"
-            placeholder="Message..."
-            value={inputMessage}
-            onChange={(e) => setInputMessage(e.target.value)}
-            onKeyUp={(e) => e.key === "Enter" && handleSendMessage(e)}
-            className="w-full pl-4 pr-24 py-5 rounded-full border border-gray-200 focus:outline-none focus:ring-1 focus:ring-gray-200"
-          />
-        </div>
+        <form onSubmit={handleSendMessage}>
+          <div className="relative w-full">
+            <Input
+              ref={messageInputRef}
+              type="text"
+              placeholder="Message..."
+              value={inputMessage}
+              onChange={(e) => setInputMessage(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSendMessage(e);
+                }
+              }}
+              className="w-full pl-4 pr-16 py-5 rounded-full border border-gray-200 focus:outline-none focus:ring-1 focus:ring-gray-200"
+            />
+            <Button
+              className="absolute right-0 top-0 bottom-0 py-[21px] px-4 rounded-r-full"
+              type="submit"
+              disabled={!inputMessage.trim()}
+            >
+              Send
+            </Button>
+          </div>
+        </form>
       </div>
     </div>
   )
