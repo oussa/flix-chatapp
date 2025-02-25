@@ -1,7 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
+import { useSearchParams } from "next/navigation"
 import { Search, X } from "lucide-react"
 import LandingPage from "@/components/LandingPage"
 import ChatButton from "@/components/ChatButton"
@@ -12,6 +13,15 @@ import { Input } from '@/components/ui/input';
 export default function Home() {
   const [isChatOpen, setIsChatOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
+  const searchParams = useSearchParams()
+
+  // Check for openChat parameter in URL
+  useEffect(() => {
+    const openChat = searchParams.get('openChat')
+    if (openChat === 'true') {
+      setIsChatOpen(true)
+    }
+  }, [searchParams])
 
   return (
     <div className="min-h-screen bg-background">

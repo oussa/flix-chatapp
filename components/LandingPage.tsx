@@ -93,13 +93,13 @@ export default function LandingPage({ searchQuery, onChatOpen }: LandingPageProp
             return (
               <Link 
                 key={topic.id} 
-                href={topic.link} 
+                href={`/help/${topic.slug}`} 
                 className="block group h-full transform-gpu"
                 role="listitem"
                 tabIndex={0}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
-                    window.location.href = topic.link;
+                    window.location.href = `/help/${topic.slug}`;
                   }
                 }}
                 aria-label={`${topic.title} - Learn more`}

@@ -35,8 +35,16 @@ export const helpTopics = pgTable('help_topics', {
   id: serial('id').primaryKey(),
   title: varchar('title', { length: 255 }).notNull(),
   icon: varchar('icon', { length: 50 }).notNull(), // Store icon name from lucide-react
-  link: varchar('link', { length: 255 }).notNull(),
+  slug: varchar('slug', { length: 100 }).notNull().unique(), // URL-friendly identifier
   sortOrder: serial('sort_order').notNull(), // To maintain custom ordering
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+export const helpContent = pgTable('help_content', {
+  id: serial('id').primaryKey(),
+  topicId: integer('topic_id').references(() => helpTopics.id).notNull(),
+  content: text('content').notNull(), // HTML content
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });

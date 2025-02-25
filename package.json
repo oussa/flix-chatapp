@@ -15,7 +15,8 @@
     "db:push": "drizzle-kit push",
     "db:pull": "drizzle-kit pull",
     "db:check": "drizzle-kit check",
-    "db:up": "drizzle-kit up"
+    "db:up": "drizzle-kit up",
+    "db:seed": "npx tsx drizzle/seed.ts"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.6",

@@ -13,7 +13,7 @@ export default function ChatButton({ onClick }: ChatButtonProps) {
           onClick();
         }
       }}
-      className="fixed bottom-4 right-4 w-14 h-14 rounded-full bg-white/50 backdrop-blur-sm shadow-lg hover:shadow-xl hover:scale-105 transition-scale transition-shadow duration-200 flex items-center justify-center z-50"
+      className="fixed bottom-4 right-4 w-14 h-14 rounded-full bg-white/25 backdrop-blur-sm shadow-xl hover:shadow-3xl hover:scale-105 transition-scale transition-shadow duration-200 flex items-center justify-center z-50"
       aria-label="Open chat with support"
       role="button"
       tabIndex={0}
