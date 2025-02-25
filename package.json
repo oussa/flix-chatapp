@@ -7,7 +7,7 @@
     "dev:sio": "npx tsx watch server/index.ts",
     "dev:all": "concurrently \"npm run dev\" \"npm run dev:sio\"",
     "build": "next build",
-    "build:io": "tsc --project tsconfig.server.json",
+    "build:sio": "tsc --project tsconfig.server.json",
     "build:all": "concurrently \"npm run build\" \"npm run build:sio\"",
     "prebuild": "rm -rf .next",
     "prebuild:sio": "rm -rf dist",
