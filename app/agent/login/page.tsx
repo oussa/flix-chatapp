@@ -52,6 +52,7 @@ export default function AgentLogin() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-[#31a200] focus:border-[#31a200]"
+                  data-testid="agent-email-input"
                 />
               </div>
             </div>
@@ -69,6 +70,7 @@ export default function AgentLogin() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-[#31a200] focus:border-[#31a200]"
+                  data-testid="agent-password-input"
                 />
               </div>
             </div>
@@ -81,6 +83,7 @@ export default function AgentLogin() {
               <Button
                 type="submit"
                 className="w-full bg-[#31a200] hover:bg-[#31a200]/90"
+                data-testid="agent-login-button"
               >
                 Sign in
               </Button>

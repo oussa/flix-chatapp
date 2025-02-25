@@ -447,6 +447,7 @@ export default function ChatInterface({ onClose }: ChatInterfaceProps) {
         role="log"
         aria-live="polite"
         aria-atomic="false"
+        data-testid="customer-chat-area"
       >
         {messages.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-center px-4">
@@ -493,6 +494,7 @@ export default function ChatInterface({ onClose }: ChatInterfaceProps) {
           <div className="relative w-full">
             <Input
               ref={messageInputRef}
+              data-testid="customer-message-input"
               type="text"
               placeholder="Message..."
               value={inputMessage}
@@ -508,6 +510,7 @@ export default function ChatInterface({ onClose }: ChatInterfaceProps) {
               required
             />
             <Button
+              data-testid="customer-send-button"
               className="absolute right-0 top-0 bottom-0 py-[21px] px-4 rounded-r-full"
               type="submit"
               disabled={!inputMessage.trim()}

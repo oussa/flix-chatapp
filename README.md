@@ -55,7 +55,6 @@ A modern, accessible help center and customer support chat application for FLIX 
    Copy the `.env.example` file in the root directory and rename it to `.env` and set the following variables:
    ```
    DATABASE_URL=postgresql://username:password@localhost:5432/flix_help
-   NEXT_PUBLIC_SOCKET_URL=http://localhost:3001
    ```
 
 4. Run database migrations:

@@ -43,3 +43,9 @@ test.html
 next-env.d.ts
 
 ecosystem.config.js
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/

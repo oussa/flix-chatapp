@@ -379,6 +379,7 @@ export default function AgentDashboard() {
                       selectedConversation === conv.id ? 'bg-gray-50' : ''
                     } ${!conv.isRead ? 'bg-green-50/50' : ''}`}
                     onClick={() => handleConversationSelect(Number(conv.id))}
+                    data-testid={`conversation-${conv.id}`}
                   >
                     <div className="flex items-start space-x-4">
                       <div className="relative flex-shrink-0">
@@ -470,7 +471,10 @@ export default function AgentDashboard() {
                   </div>
                 </div>
 
-                <div className="h-[calc(100vh-400px)] overflow-y-auto p-4 space-y-4">
+                <div
+                  data-testid="agent-chat-area"
+                  className="h-[calc(100vh-400px)] overflow-y-auto p-4 space-y-4"
+                >
                   {conversations.find(c => c.id === selectedConversation)?.messages.map((msg) => (
                     <div
                       key={msg.id}
@@ -512,11 +516,13 @@ export default function AgentDashboard() {
                         }}
                         className="flex-1 border rounded-md px-3 py-5 focus:outline-none focus:ring-2 focus:ring-[#31a200]"
                         placeholder="Type your message..."
+                        data-testid="agent-message-input"
                       />
                       <Button
                         className="py-5"
                         type="submit"
                         disabled={!message.trim()}
+                        data-testid="agent-send-button"
                       >
                         Send
                       </Button>

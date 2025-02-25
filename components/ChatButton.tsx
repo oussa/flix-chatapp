@@ -18,6 +18,7 @@ export default function ChatButton({ onClick }: ChatButtonProps) {
       role="button"
       tabIndex={0}
       title="Chat with support"
+      data-testid="chat-button"
     >
       <div className="w-12 h-12 rounded-full overflow-hidden" aria-hidden="true">
         <Image src="/flixy.png" alt="" width={48} height={48} />

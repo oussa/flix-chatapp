@@ -1,3 +1,4 @@
+import { eq } from 'drizzle-orm';
 import '../environment';
 import { db } from './db';
 import { helpTopics, helpContent, agents } from './schema';
@@ -259,6 +260,9 @@ async function seed() {
     
     console.log('Clearing existing help topics...');
     await db.delete(helpTopics);
+
+    console.log('Clearing existing agent data...');
+    await db.delete(agents).where(eq(agents.email, 'agent'));
 
     // Insert help topics
     console.log('Inserting help topics...');
