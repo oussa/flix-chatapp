@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { Search, X } from "lucide-react"
@@ -10,7 +10,8 @@ import ChatInterface from "@/components/CustomerChatInterface"
 import { SocketProvider } from '@/components/SocketProvider';
 import { Input } from '@/components/ui/input';
 
-export default function Home() {
+// Component that uses useSearchParams
+function HomeContent() {
   const [isChatOpen, setIsChatOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const searchParams = useSearchParams()
@@ -79,5 +80,20 @@ export default function Home() {
         )}
       </main>
     </div>
+  )
+}
+
+// Fallback component to show while loading
+function HomeLoading() {
+  return <div className="min-h-screen bg-background flex items-center justify-center">
+    <p className="text-lg">Loading...</p>
+  </div>
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={<HomeLoading />}>
+      <HomeContent />
+    </Suspense>
   )
 }

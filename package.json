@@ -5,9 +5,14 @@
   "scripts": {
     "dev": "next dev --turbo",
     "dev:io": "npx tsx watch server/index.ts",
-    "dev:all": "concurrently \"next dev --turbo\" \"npx tsx watch server/index.ts\"",
+    "dev:all": "concurrently \"npm run dev\" \"npm run dev:io\"",
     "build": "next build",
-    "start": "concurrently \"next start\" \"NODE_ENV=production node server.js\"",
+    "build:io": "tsc --project tsconfig.server.json",
+    "build:all": "concurrently \"npm run build\" \"npm run build:io\"",
+    "prebuild:io": "rm -rf dist",
+    "start": "next start",
+    "start:io": "NODE_ENV=production node dist/server/index.js",
+    "start:all": "concurrently \"npm run start\" \"npm run start:io\"",
     "lint": "next lint",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
@@ -54,6 +59,7 @@
     "eslint-config-next": "15.1.7",
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
+    "tsconfig-paths": "^4.2.0",
     "typescript": "^5"
   }
 }

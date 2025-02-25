@@ -12,7 +12,7 @@ import { LucideIcon } from 'lucide-react';
 export default function HelpPage() {
   const router = useRouter();
   const { id } = useParams<{id: string}>();
-  const [helpData, setHelpData] = useState<any>(null);
+  const [helpData, setHelpData] = useState<{ title: string, icon: string, content: string} | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -90,7 +90,7 @@ export default function HelpPage() {
         <div className="container mx-auto px-4 py-12 text-center">
           <HelpCircle className="h-16 w-16 text-gray-400 mx-auto mb-4" />
           <h2 className="text-2xl font-bold mb-2">Help Topic Not Found</h2>
-          <p className="text-gray-600 mb-6">We couldn't find the help topic you're looking for.</p>
+          <p className="text-gray-600 mb-6">{"We couldn't find the help topic you're looking for."}</p>
           <Button onClick={() => router.push('/')}>
             Return to Help Center
           </Button>
