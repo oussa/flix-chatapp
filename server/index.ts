@@ -51,11 +51,11 @@ app.prepare().then(() => {
       io.socketsLeave(conversationId);
     });
   
-    socket.on(CustomerEvents.DISCONNECT, ({ conversationId }) => {
+    socket.on(CustomerEvents.DISCONNECT, () => {
       activeCustomers.delete(socket.id);
     });
 
-    socket.on(AgentEvents.DISCONNECT, ({ conversationId }) => {
+    socket.on(AgentEvents.DISCONNECT, () => {
       activeAgents.delete(socket.id);
     });
   });

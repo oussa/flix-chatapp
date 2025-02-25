@@ -132,8 +132,15 @@ A modern, accessible help center and customer support chat application for FLIX 
   - Adding a knowledge base to the help center to answer common questions.\
   - Refactoring code to have more reusable components and avoid long components.
   - Adding more tests.
+  - Improving Error Handling
 
 ## Other Potential Improvements
+
+0. **e2e tests**:
+   - Add e2e tests for the help center and chat.
+   - Add unit tests for the server actions.
+   - Add unit tests for the client components.
+   - Add e2e tests for the chat.
 
 1. **Admin Interface**:
    - Create an admin dashboard for managing help topics and content
