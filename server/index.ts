@@ -4,15 +4,15 @@ import { Server } from "socket.io";
 import '../environment';
 import { saveMessage } from "./messageService";
 import { resolveConversation } from "./conversationService";
-import { AgentEvents, CustomerEvents, ServerEvents } from "@/types/events";
+import { AgentEvents, CustomerEvents, ServerEvents } from "../types/events";
 
 const activeCustomers = new Map();
 const activeAgents = new Set();
 
 const dev = process.env.NODE_ENV !== "production";
 const hostname = "localhost";
-const port = 3001;
-// when using middleware `hostname` and `port` must be provided below
+const port = Number(process.env.SIO_PORT) || 3001;
+
 const app = next({ dev, hostname, port });
 const handler = app.getRequestHandler();
 

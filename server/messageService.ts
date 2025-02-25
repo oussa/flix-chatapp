@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { db } from "../drizzle/db";
 import { conversations, messages } from "../drizzle/schema";
-import type { Message } from "@/types/socket";
+import type { Message } from "../types/socket";
 
 interface SaveMessageParams {
   conversationId: number;

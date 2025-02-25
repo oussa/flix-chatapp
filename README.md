@@ -68,7 +68,7 @@ A modern, accessible help center and customer support chat application for FLIX 
    npm run db:seed
    ```
 
-6. Start the development server:
+6. Start the development server and the socketio server:
    ```bash
    npm run dev:all
    ```
