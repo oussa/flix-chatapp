@@ -38,7 +38,7 @@ interface ChatInterfaceProps {
   onClose: () => void
 }
 
-// TODO: Move these questions and their logic to the server and simply conversation creation
+// TODO: Move these questions and their logic to the server and simplify conversation creation
 const allQuestions = [
   "Hello, I'm Flixy your AI agent. How can I help you today?",
   "To best serve you I still need some information before handing over to one of our human agents.",
@@ -50,6 +50,10 @@ const allQuestions = [
   "You've been added to the queue. An agent will be with you shortly."
 ]
 
+// Step 1: Greeting and getting replies from the user about all the basic information
+// Step 2: Sending to server and getting a conversation ID back
+// Step 3: Joining the conversation using socketio and listening for messages
+
 export default function ChatInterface({ onClose }: ChatInterfaceProps) {
   const socket = useSocket() as ClientSocket | null;
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -59,6 +63,7 @@ export default function ChatInterface({ onClose }: ChatInterfaceProps) {
   const [inputMessage, setInputMessage] = useState("")
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null)
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
+  const [conversationStage, setConversationStage] = useState<number>(0)
   const [conversationId, setConversationId] = useState<number | null>(null)
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -147,6 +152,23 @@ export default function ChatInterface({ onClose }: ChatInterfaceProps) {
     }
     setMessages(prev => [...prev, newMessage])
   }, [])
+
+  useEffect(() => {
+    if (conversationStage === 1) {
+      addMessage(allQuestions[6], false);
+      setConversationStage(2);
+    } else if (conversationStage === 2) {
+      setTimeout(() => {
+        addMessage(allQuestions[7], false);
+        setConversationStage(3);
+      }, 1000);
+    } else if (conversationStage === 3) {
+      // After all messages are added, add to queue
+      setTimeout(() => {
+        createConversation();
+      }, 1000);
+    }
+  }, [conversationStage]);
 
   const handleSendMessage = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -241,19 +263,16 @@ export default function ChatInterface({ onClose }: ChatInterfaceProps) {
           setTimeout(() => addMessage(allQuestions[5], false), 1000);
           break;
         case 5: // Booking ID
+          // Add user's response to booking ID question
           addMessage(messageContent, true);
           setUserInfo(prev => prev ? {
             ...prev,
             bookingId: messageContent.toLowerCase() === 'no' ? undefined : messageContent
           } : null);
           setCurrentQuestionIndex(6);
-          setTimeout(() => {
-            addMessage(allQuestions[6], false);
-          }, 1000);
-          setTimeout(() => {
-            addMessage(allQuestions[7], false);
-            addToQueue();
-          }, 2000);
+          
+          // Start the queue sequence instead of using nested timeouts
+          setConversationStage(1);
           break;
       }
     }
@@ -261,7 +280,7 @@ export default function ChatInterface({ onClose }: ChatInterfaceProps) {
     setTimeout(scrollToBottom, 100);
   }
 
-  const addToQueue = async () => {
+  const createConversation = async () => {
     try {
       const response = await fetch("/api/conversations", {
         method: "POST",
@@ -269,14 +288,15 @@ export default function ChatInterface({ onClose }: ChatInterfaceProps) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ userInfo, messages }),
-      })
+      });
+      
       if (response.ok) {
         const data = await response.json();
         setConversationId(data.conversationId);
         localStorage.setItem('convId', data.conversationId);
       }
     } catch (error) {
-      console.error("Error adding to queue:", error)
+      console.error("Error adding to queue:", error);
     }
   }
 
