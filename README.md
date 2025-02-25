@@ -4,6 +4,12 @@ A modern, accessible help center and customer support chat application for FLIX 
 
 ![FLIX Help Center](https://cdn-cf.cms.flixbus.com/drupal-assets/2021-10/desktop-flix-hero-q4-2021.jpg)
 
+## Demo
+
+Help Center & Customer Chat: Available at: https://flix-chatapp.vercel.app
+
+Agent Dashboard: Available at: https://flix-chatapp.vercel.app/agent (use `agent` as both username and password)
+
 ## Features
 
 ### Help Center
@@ -16,12 +22,15 @@ A modern, accessible help center and customer support chat application for FLIX 
 - **Pre-collection of user information**: User is asked for their email, name and booking ID before starting a chat
 - **Real-time Chat**: Live chat with customer support agents
 - **Conversation History**: Persistent conversation history for returning users
-- **Conversation Resolution**: Agents can mark conversations as resolved
 
 ### Agent Dashboard
 - **Agent Authentication**: Agents can login to the dashboard using their email and password
 - **Conversation Management**: Agents can view, reply and resolve conversations
-- **Analytics**: Agents can view analytics of the conversations
+- **Conversation Resolution**: Agents can mark conversations as resolved
+
+### Misc
+- **Continuous Deployment to Vercel on push to main** - https://flix-chatapp.vercel.app
+- **Deployment of Socket.IO server** - https://flix-sio.oussama.io
 
 ## Tech Stack
 
@@ -90,100 +99,46 @@ A modern, accessible help center and customer support chat application for FLIX 
 ├── lib/                  # Utility functions
 ├── public/               # Static assets
 ├── server/               # Socket.IO server
+├── e2e/                  # End-to-end tests
 └── types/                # TypeScript type definitions
 ```
 
-## Key Accomplishments
+## Limitations due to time constraints
+   - No Agent Signup.
+   - Error handling is not consistent across the application.
+   - Input validation is super basic. (Example: Email is not validated properly)
+   - On Help Topic page, "I need further help" button would prefill the topic and problem in the chat.
+   - Email sending (with Resend API) of conversation summary when a conversation is resolved.
+   - Test coverage should be around 80% at least.
+   - Prettier and ESLint should be configured. (Used basic eslint config).
+   - Dockerize the application.
 
-1. **Database-Driven Help System**:
-   - Implemented a database schema for help topics and content
-   - Created a seeding mechanism for populating help topics
-   - Built server actions for retrieving help topics and content
+## End-to-End Tests
 
-2. **Accessible UI Components**:
-   - Enhanced accessibility of UI components with ARIA attributes
-   - Implemented keyboard navigation for all interactive elements
-   - Added proper focus management for modal dialogs
+The project includes end-to-end tests using Playwright to ensure the chat functionality works correctly across both customer and agent interfaces.
 
-3. **Real-time Chat System**:
-   - Implemented Socket.IO for real-time communication
-   - Built a persistent conversation history system
-   - Ability to resolve conversations
+### Running Tests
 
-4. **Responsive Design**:
-   - Designed a fully responsive interface that works on all devices
-   - Implemented a mobile-first approach for all components
-   - Used Tailwind CSS for consistent styling
+To run the end-to-end tests:
 
-5. **Search Functionality**:
-   - Added search capability for help topics
-   - Implemented real-time filtering of help topics based on search query
+1. Make sure your development server is running:
+   ```bash
+   npm run dev:all
+   ```
 
-## What I would do differently next time
+2. In a separate terminal, run the Playwright tests:
+   ```bash
+   npm run e2e
+   ```
 
-   - I would directly start a conversation with the user and not ask for their email, name and booking ID first on the client side before generating a conversation ID. This complicated the code.
-
-   - I would start with socket.io then the DB persistence then the proper ui for the customer and agent chat components.
-
-## Quick Wins
-
-  - Sending emails to the user once a conversation is resolved.
-  - Adding a knowledge base to the help center to answer common questions.\
-  - Refactoring code to have more reusable components and avoid long components.
-  - Adding more tests.
-  - Improving Error Handling
-
-## Other Potential Improvements
-
-0. **e2e tests**:
-   - Add e2e tests for the help center and chat.
-   - Add unit tests for the server actions.
-   - Add unit tests for the client components.
-   - Add e2e tests for the chat.
-
-1. **Admin Interface**:
-   - Create an admin dashboard for managing help topics and content
-   - Add analytics for tracking most viewed help topics
-   - Implement user management for support agents
-
-2. **Enhanced Search**:
-   - Implement full-text search for help content
-   - Add search suggestions and autocomplete
-   - Include search analytics to improve content based on user queries
-
-3. **Content Management**:
-   - Add a WYSIWYG editor for help content
-   - Implement content versioning to track changes
-   - Add support for multimedia content (videos, interactive guides)
-
-4. **User Accounts**:
-   - Allow users to create accounts to track their support history
-   - Implement personalized help recommendations
-   - Add the ability for users to save favorite help topics
-
-5. **Chatbot Integration**:
-   - Implement an AI chatbot for handling common questions
-   - Create a hybrid system that escalates to human agents when needed
-   - Add sentiment analysis to prioritize urgent customer issues
-
-6. **Internationalization**:
-   - Add support for multiple languages
-   - Implement region-specific help content
-   - Create a language switcher component
-
-7. **Performance Optimization**:
-   - Implement server-side caching for help content
-   - Add image optimization for faster loading
-   - Implement code splitting for improved initial load time
-
-8. **Feedback System**:
-   - Add a rating system for help topics
-   - Implement a feedback form for each help topic
-   - Create a system for tracking and addressing user feedback
+3. To view the test report:
+   ```bash
+   npx playwright show-report
+   ```
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the MIT License.
 
 ## Acknowledgements
 
@@ -194,4 +149,3 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - [Socket.IO](https://socket.io/)
 - [Drizzle ORM](https://orm.drizzle.team/)
 - [Lucide Icons](https://lucide.dev/)
-
