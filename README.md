@@ -30,7 +30,7 @@ Agent Dashboard: Available at: https://flix-chatapp.vercel.app/agent (use `agent
 
 ### Misc
 - **Continuous Deployment to Vercel on push to main** - https://flix-chatapp.vercel.app
-- **Deployment of Socket.IO server** - https://flix-sio.oussama.io
+- **Deployment of Socket.IO server** - https://chatapp-sio.oussama.io
 
 ## Tech Stack
 
@@ -148,4 +148,5 @@ This project is licensed under the MIT License.
 - [Shadcn UI](https://ui.shadcn.com/)
 - [Socket.IO](https://socket.io/)
 - [Drizzle ORM](https://orm.drizzle.team/)
+- [Playwright](https://playwright.dev/)
 - [Lucide Icons](https://lucide.dev/)
